@@ -1,0 +1,3 @@
+# Patches for whatsapp_calling app
+# Add patches here in the format:
+# module_name.path.to.patch_file

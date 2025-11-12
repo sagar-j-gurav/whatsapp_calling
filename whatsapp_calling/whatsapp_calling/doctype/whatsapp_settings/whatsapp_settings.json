@@ -1,0 +1,153 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-11-07 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "whatsapp_api_section",
+  "default_access_token",
+  "webhook_verify_token",
+  "column_break_1",
+  "webhook_url",
+  "janus_section",
+  "janus_http_url",
+  "janus_ws_url",
+  "column_break_2",
+  "janus_api_secret",
+  "janus_admin_secret",
+  "recording_section",
+  "enable_call_recording",
+  "recording_storage_path",
+  "column_break_3",
+  "recording_format",
+  "retention_days"
+ ],
+ "fields": [
+  {
+   "fieldname": "whatsapp_api_section",
+   "fieldtype": "Section Break",
+   "label": "WhatsApp API Configuration"
+  },
+  {
+   "fieldname": "default_access_token",
+   "fieldtype": "Password",
+   "label": "Default Access Token",
+   "description": "Meta WhatsApp Business API access token (can be overridden per number)"
+  },
+  {
+   "fieldname": "webhook_verify_token",
+   "fieldtype": "Password",
+   "label": "Webhook Verify Token",
+   "description": "Token for webhook verification from Meta"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "webhook_url",
+   "fieldtype": "Data",
+   "label": "Webhook URL",
+   "read_only": 1,
+   "description": "Use this URL in Meta App Settings"
+  },
+  {
+   "fieldname": "janus_section",
+   "fieldtype": "Section Break",
+   "label": "Janus Media Server Configuration"
+  },
+  {
+   "fieldname": "janus_http_url",
+   "fieldtype": "Data",
+   "label": "Janus HTTP API URL",
+   "default": "http://localhost:8088/janus",
+   "description": "HTTP endpoint for Janus API"
+  },
+  {
+   "fieldname": "janus_ws_url",
+   "fieldtype": "Data",
+   "label": "Janus WebSocket URL",
+   "default": "ws://localhost:8188",
+   "description": "WebSocket endpoint for browser connections (use wss:// for production)"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "janus_api_secret",
+   "fieldtype": "Password",
+   "label": "Janus API Secret",
+   "description": "API secret from janus.jcfg"
+  },
+  {
+   "fieldname": "janus_admin_secret",
+   "fieldtype": "Password",
+   "label": "Janus Admin Secret"
+  },
+  {
+   "fieldname": "recording_section",
+   "fieldtype": "Section Break",
+   "label": "Call Recording Settings"
+  },
+  {
+   "fieldname": "enable_call_recording",
+   "fieldtype": "Check",
+   "label": "Enable Call Recording",
+   "default": "1",
+   "description": "Record all calls automatically"
+  },
+  {
+   "fieldname": "recording_storage_path",
+   "fieldtype": "Data",
+   "label": "Recording Storage Path",
+   "default": "/recordings",
+   "description": "Path relative to site directory"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "recording_format",
+   "fieldtype": "Select",
+   "label": "Recording Format",
+   "options": "Opus\nWAV\nMP3",
+   "default": "Opus",
+   "description": "Audio format for recordings"
+  },
+  {
+   "fieldname": "retention_days",
+   "fieldtype": "Int",
+   "label": "Recording Retention Days",
+   "default": "90",
+   "description": "Delete recordings older than this (0 = keep forever)"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2024-11-07 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "WhatsApp Calling",
+ "name": "WhatsApp Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include whatsapp_calling *.css
+recursive-include whatsapp_calling *.csv
+recursive-include whatsapp_calling *.html
+recursive-include whatsapp_calling *.ico
+recursive-include whatsapp_calling *.js
+recursive-include whatsapp_calling *.json
+recursive-include whatsapp_calling *.md
+recursive-include whatsapp_calling *.png
+recursive-include whatsapp_calling *.py
+recursive-include whatsapp_calling *.svg
+recursive-include whatsapp_calling *.txt
+recursive-exclude whatsapp_calling *.pyc

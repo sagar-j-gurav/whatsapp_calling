@@ -1,0 +1,155 @@
+# Copyright (c) 2024, Your Company and contributors
+# For license information, please see license.txt
+
+import frappe
+import requests
+import secrets
+import json
+
+
+class JanusClient:
+	def __init__(self):
+		settings = frappe.get_single("WhatsApp Settings")
+		self.base_url = settings.janus_http_url
+		self.api_secret = settings.get_password('janus_api_secret')
+		self.session_id = None
+		self.handle_id = None
+
+	def setup_call_room(self):
+		"""
+		Setup complete Janus room for a call
+
+		Returns:
+			dict with session_id, handle_id, room_id
+		"""
+		# Create session
+		self.session_id = self.create_session()
+
+		# Attach AudioBridge plugin
+		self.handle_id = self.attach_plugin(self.session_id)
+
+		# Create room
+		room_id = self.create_room(self.session_id, self.handle_id)
+
+		return {
+			"session_id": self.session_id,
+			"handle_id": self.handle_id,
+			"room_id": room_id
+		}
+
+	def create_session(self):
+		"""Create Janus session"""
+		url = f"{self.base_url}"
+
+		payload = {
+			"janus": "create",
+			"transaction": self._generate_transaction_id()
+		}
+
+		if self.api_secret:
+			payload["apisecret"] = self.api_secret
+
+		response = requests.post(url, json=payload, timeout=10)
+		response.raise_for_status()
+
+		data = response.json()
+
+		if data.get("janus") == "success":
+			return str(data["data"]["id"])
+		else:
+			raise Exception(f"Failed to create Janus session: {data}")
+
+	def attach_plugin(self, session_id, plugin="janus.plugin.audiobridge"):
+		"""Attach AudioBridge plugin"""
+		url = f"{self.base_url}/{session_id}"
+
+		payload = {
+			"janus": "attach",
+			"plugin": plugin,
+			"transaction": self._generate_transaction_id()
+		}
+
+		if self.api_secret:
+			payload["apisecret"] = self.api_secret
+
+		response = requests.post(url, json=payload, timeout=10)
+		response.raise_for_status()
+
+		data = response.json()
+
+		if data.get("janus") == "success":
+			return str(data["data"]["id"])
+		else:
+			raise Exception(f"Failed to attach plugin: {data}")
+
+	def create_room(self, session_id, handle_id, room_id=None):
+		"""Create audio mixing room"""
+		url = f"{self.base_url}/{session_id}/{handle_id}"
+
+		if not room_id:
+			room_id = secrets.randbelow(999999)
+
+		settings = frappe.get_single("WhatsApp Settings")
+
+		payload = {
+			"janus": "message",
+			"transaction": self._generate_transaction_id(),
+			"body": {
+				"request": "create",
+				"room": room_id,
+				"description": f"WhatsApp Call Room {room_id}",
+				"sampling_rate": 48000,  # WhatsApp uses 48kHz
+				"record": settings.enable_call_recording,
+				"rec_dir": settings.recording_storage_path if settings.enable_call_recording else None
+			}
+		}
+
+		if self.api_secret:
+			payload["apisecret"] = self.api_secret
+
+		response = requests.post(url, json=payload, timeout=10)
+		response.raise_for_status()
+
+		data = response.json()
+
+		if data.get("janus") == "success" or data.get("plugindata", {}).get("data", {}).get("audiobridge") == "created":
+			return str(room_id)
+		else:
+			raise Exception(f"Failed to create room: {data}")
+
+	def destroy_room(self, session_id, room_id):
+		"""Destroy room and cleanup"""
+		try:
+			url = f"{self.base_url}/{session_id}/{self.handle_id}"
+
+			payload = {
+				"janus": "message",
+				"transaction": self._generate_transaction_id(),
+				"body": {
+					"request": "destroy",
+					"room": room_id
+				}
+			}
+
+			if self.api_secret:
+				payload["apisecret"] = self.api_secret
+
+			requests.post(url, json=payload, timeout=5)
+
+			# Destroy session
+			url = f"{self.base_url}/{session_id}"
+			payload = {
+				"janus": "destroy",
+				"transaction": self._generate_transaction_id()
+			}
+			if self.api_secret:
+				payload["apisecret"] = self.api_secret
+
+			requests.post(url, json=payload, timeout=5)
+
+		except Exception as e:
+			frappe.log_error(message=str(e), title="Janus Cleanup Error")
+
+	def _generate_transaction_id(self):
+		"""Generate random transaction ID"""
+		return secrets.token_hex(12)

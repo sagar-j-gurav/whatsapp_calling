@@ -1,0 +1,3 @@
+# Python dependencies for WhatsApp Calling app
+frappe
+requests>=2.31.0

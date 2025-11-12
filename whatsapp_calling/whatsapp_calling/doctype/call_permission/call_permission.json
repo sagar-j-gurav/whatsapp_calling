@@ -1,0 +1,173 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:PERM-{customer_number}-{#####}",
+ "creation": "2024-11-07 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "customer_number",
+  "business_number",
+  "company",
+  "column_break_1",
+  "permission_status",
+  "lead",
+  "timing_section",
+  "request_sent_at",
+  "granted_at",
+  "column_break_2",
+  "expires_at",
+  "limits_section",
+  "requests_in_24h",
+  "requests_in_7d",
+  "column_break_3",
+  "calls_in_24h",
+  "last_call_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "customer_number",
+   "fieldtype": "Data",
+   "label": "Customer Number",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "business_number",
+   "fieldtype": "Link",
+   "options": "WhatsApp Number",
+   "label": "Business Number",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "options": "Company",
+   "label": "Company",
+   "reqd": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "permission_status",
+   "fieldtype": "Select",
+   "label": "Permission Status",
+   "options": "Requested\nGranted\nDenied\nExpired",
+   "default": "Requested",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "lead",
+   "fieldtype": "Link",
+   "options": "Lead",
+   "label": "CRM Lead",
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "timing_section",
+   "fieldtype": "Section Break",
+   "label": "Timing"
+  },
+  {
+   "fieldname": "request_sent_at",
+   "fieldtype": "Datetime",
+   "label": "Request Sent At"
+  },
+  {
+   "fieldname": "granted_at",
+   "fieldtype": "Datetime",
+   "label": "Granted At"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "expires_at",
+   "fieldtype": "Datetime",
+   "label": "Expires At",
+   "description": "7 days from grant"
+  },
+  {
+   "fieldname": "limits_section",
+   "fieldtype": "Section Break",
+   "label": "Usage Limits"
+  },
+  {
+   "fieldname": "requests_in_24h",
+   "fieldtype": "Int",
+   "label": "Requests in 24h",
+   "default": "0",
+   "read_only": 1
+  },
+  {
+   "fieldname": "requests_in_7d",
+   "fieldtype": "Int",
+   "label": "Requests in 7d",
+   "default": "0",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "calls_in_24h",
+   "fieldtype": "Int",
+   "label": "Calls in 24h",
+   "default": "0",
+   "read_only": 1,
+   "description": "Max 5 after permission"
+  },
+  {
+   "fieldname": "last_call_at",
+   "fieldtype": "Datetime",
+   "label": "Last Call At"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-11-07 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "WhatsApp Calling",
+ "name": "Call Permission",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

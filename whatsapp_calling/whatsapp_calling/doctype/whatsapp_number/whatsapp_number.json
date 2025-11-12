@@ -1,0 +1,169 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:phone_number",
+ "creation": "2024-11-07 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "phone_number",
+  "display_name",
+  "company",
+  "column_break_1",
+  "status",
+  "country_code",
+  "meta_section",
+  "phone_number_id",
+  "business_account_id",
+  "column_break_2",
+  "access_token",
+  "webhook_subscribed",
+  "limits_section",
+  "daily_call_limit",
+  "monthly_budget",
+  "column_break_3",
+  "current_month_usage",
+  "last_used"
+ ],
+ "fields": [
+  {
+   "fieldname": "phone_number",
+   "fieldtype": "Data",
+   "label": "Phone Number",
+   "unique": 1,
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "Format: +919876543210"
+  },
+  {
+   "fieldname": "display_name",
+   "fieldtype": "Data",
+   "label": "Display Name",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "Business name shown in WhatsApp"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "options": "Company",
+   "label": "Company",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Company that owns this number"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Active\nInactive\nPending Verification",
+   "default": "Pending Verification",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "country_code",
+   "fieldtype": "Data",
+   "label": "Country Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "meta_section",
+   "fieldtype": "Section Break",
+   "label": "Meta Configuration"
+  },
+  {
+   "fieldname": "phone_number_id",
+   "fieldtype": "Data",
+   "label": "Phone Number ID",
+   "reqd": 1,
+   "description": "From Meta Business Manager"
+  },
+  {
+   "fieldname": "business_account_id",
+   "fieldtype": "Data",
+   "label": "WhatsApp Business Account ID",
+   "description": "WABA ID from Meta"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "access_token",
+   "fieldtype": "Password",
+   "label": "Access Token",
+   "description": "Leave blank to use default from WhatsApp Settings"
+  },
+  {
+   "fieldname": "webhook_subscribed",
+   "fieldtype": "Check",
+   "label": "Webhook Subscribed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "limits_section",
+   "fieldtype": "Section Break",
+   "label": "Limits & Usage"
+  },
+  {
+   "fieldname": "daily_call_limit",
+   "fieldtype": "Int",
+   "label": "Daily Call Limit",
+   "default": "100"
+  },
+  {
+   "fieldname": "monthly_budget",
+   "fieldtype": "Currency",
+   "label": "Monthly Budget"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "current_month_usage",
+   "fieldtype": "Currency",
+   "label": "Current Month Usage",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_used",
+   "fieldtype": "Datetime",
+   "label": "Last Used",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-11-07 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "WhatsApp Calling",
+ "name": "WhatsApp Number",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

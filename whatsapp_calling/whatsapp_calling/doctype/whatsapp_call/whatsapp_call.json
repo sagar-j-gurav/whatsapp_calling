@@ -1,0 +1,305 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:WC-{YYYY}-{#####}",
+ "creation": "2024-11-07 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "call_details_section",
+  "call_id",
+  "status",
+  "direction",
+  "column_break_1",
+  "lead",
+  "contact_name",
+  "customer_number",
+  "business_section",
+  "business_number",
+  "company",
+  "column_break_2",
+  "assigned_to",
+  "timing_section",
+  "initiated_at",
+  "answered_at",
+  "column_break_3",
+  "ended_at",
+  "duration_seconds",
+  "technical_section",
+  "janus_room_id",
+  "janus_session_id",
+  "column_break_4",
+  "call_quality",
+  "failure_reason",
+  "recording_section",
+  "recording_file",
+  "recording_duration",
+  "column_break_5",
+  "recording_url",
+  "cost_section",
+  "cost",
+  "cost_currency",
+  "notes_section",
+  "notes",
+  "tags_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "call_details_section",
+   "fieldtype": "Section Break",
+   "label": "Call Details"
+  },
+  {
+   "fieldname": "call_id",
+   "fieldtype": "Data",
+   "label": "Call ID",
+   "unique": 1,
+   "reqd": 1,
+   "read_only": 1,
+   "in_list_view": 1,
+   "description": "WhatsApp API call ID"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Initiated\nRinging\nAnswered\nEnded\nFailed\nNo Answer\nDeclined",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "direction",
+   "fieldtype": "Select",
+   "label": "Direction",
+   "options": "Inbound\nOutbound",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "lead",
+   "fieldtype": "Link",
+   "options": "Lead",
+   "label": "CRM Lead",
+   "in_standard_filter": 1,
+   "description": "Linked CRM Lead"
+  },
+  {
+   "fieldname": "contact_name",
+   "fieldtype": "Data",
+   "label": "Contact Name",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "customer_number",
+   "fieldtype": "Data",
+   "label": "Customer Number",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "business_section",
+   "fieldtype": "Section Break",
+   "label": "Business Details"
+  },
+  {
+   "fieldname": "business_number",
+   "fieldtype": "Link",
+   "options": "WhatsApp Number",
+   "label": "Business Number",
+   "reqd": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "options": "Company",
+   "label": "Company",
+   "reqd": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "options": "User",
+   "label": "Assigned Agent",
+   "description": "User who handled the call"
+  },
+  {
+   "fieldname": "timing_section",
+   "fieldtype": "Section Break",
+   "label": "Timing"
+  },
+  {
+   "fieldname": "initiated_at",
+   "fieldtype": "Datetime",
+   "label": "Initiated At",
+   "reqd": 1
+  },
+  {
+   "fieldname": "answered_at",
+   "fieldtype": "Datetime",
+   "label": "Answered At"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ended_at",
+   "fieldtype": "Datetime",
+   "label": "Ended At"
+  },
+  {
+   "fieldname": "duration_seconds",
+   "fieldtype": "Int",
+   "label": "Duration (seconds)",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "technical_section",
+   "fieldtype": "Section Break",
+   "label": "Technical Details",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "janus_room_id",
+   "fieldtype": "Data",
+   "label": "Janus Room ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "janus_session_id",
+   "fieldtype": "Data",
+   "label": "Janus Session ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "call_quality",
+   "fieldtype": "Select",
+   "label": "Call Quality",
+   "options": "\nExcellent\nGood\nFair\nPoor"
+  },
+  {
+   "fieldname": "failure_reason",
+   "fieldtype": "Text",
+   "label": "Failure Reason"
+  },
+  {
+   "fieldname": "recording_section",
+   "fieldtype": "Section Break",
+   "label": "Recording"
+  },
+  {
+   "fieldname": "recording_file",
+   "fieldtype": "Attach",
+   "label": "Recording File",
+   "description": "Audio recording of the call"
+  },
+  {
+   "fieldname": "recording_duration",
+   "fieldtype": "Int",
+   "label": "Recording Duration (seconds)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "recording_url",
+   "fieldtype": "Data",
+   "label": "Recording URL",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cost_section",
+   "fieldtype": "Section Break",
+   "label": "Cost"
+  },
+  {
+   "fieldname": "cost",
+   "fieldtype": "Currency",
+   "label": "Cost",
+   "read_only": 1,
+   "description": "Calculated based on duration and rates"
+  },
+  {
+   "fieldname": "cost_currency",
+   "fieldtype": "Link",
+   "options": "Currency",
+   "label": "Currency",
+   "default": "INR"
+  },
+  {
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text Editor",
+   "label": "Call Notes",
+   "description": "Agent's notes about the call"
+  },
+  {
+   "fieldname": "tags_html",
+   "fieldtype": "HTML",
+   "label": "Tags"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-11-07 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "WhatsApp Calling",
+ "name": "WhatsApp Call",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "contact_name",
+ "track_changes": 1,
+ "show_name_in_global_search": 1
+}
