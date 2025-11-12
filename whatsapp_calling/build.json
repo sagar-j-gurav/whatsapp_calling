@@ -1,8 +1,8 @@
 {
 	"css/whatsapp_calling.bundle.css": [
-		"whatsapp_calling/public/css/whatsapp_calling.css"
+		"public/css/whatsapp_calling.css"
 	],
 	"js/whatsapp_calling.bundle.js": [
-		"whatsapp_calling/public/js/whatsapp_call_widget.js"
+		"public/js/whatsapp_call_widget.js"
 	]
 }
