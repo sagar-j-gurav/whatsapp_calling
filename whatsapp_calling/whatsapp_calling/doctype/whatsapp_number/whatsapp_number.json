@@ -46,13 +46,12 @@
   },
   {
    "fieldname": "company",
-   "fieldtype": "Link",
-   "options": "Company",
-   "label": "Company",
+   "fieldtype": "Data",
+   "label": "Organization/Tenant",
    "reqd": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "description": "Company that owns this number"
+   "description": "Organization or tenant that owns this number"
   },
   {
    "fieldname": "column_break_1",
