@@ -201,6 +201,7 @@ def find_lead_by_mobile(mobile_number):
 	return leads[0].name if leads else None
 
 
+@frappe.whitelist()
 def get_company_whatsapp_number(company):
 	"""Get active WhatsApp number for company"""
 	numbers = frappe.get_all(

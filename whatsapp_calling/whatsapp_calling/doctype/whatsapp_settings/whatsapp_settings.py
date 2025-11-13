@@ -16,6 +16,7 @@ class WhatsAppSettings(Document):
 		if self.janus_http_url:
 			self.test_janus_connection()
 
+	@frappe.whitelist()
 	def test_janus_connection(self):
 		"""Test if Janus is accessible"""
 		import requests
