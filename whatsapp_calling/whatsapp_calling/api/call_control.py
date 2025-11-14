@@ -108,13 +108,41 @@ def answer_call(call_id):
 		call_doc = frappe.get_doc("WhatsApp Call", {"call_id": call_id})
 		print(f"Found call record: {call_doc.name}")
 
+		# Reload document to ensure we have latest data from database
+		call_doc.reload()
+		print(f"Reloaded call record from database")
+
+		# Debug: Check what we have in the call record
+		print(f"Call record fields:")
+		print(f"  - call_id: {call_doc.call_id}")
+		print(f"  - customer_number: {call_doc.customer_number}")
+		print(f"  - sdp_offer exists: {hasattr(call_doc, 'sdp_offer')}")
+		print(f"  - sdp_offer value: {call_doc.get('sdp_offer')}")
+
 		# Get SDP offer from call record (stored from webhook)
-		sdp_offer = call_doc.sdp_offer
+		sdp_offer = call_doc.get('sdp_offer')
+
+		# If still empty, try direct database query
+		if not sdp_offer:
+			print("SDP offer not found in call_doc, trying direct database query...")
+			sdp_offer = frappe.db.get_value("WhatsApp Call", call_doc.name, "sdp_offer")
+			print(f"Direct DB query result: {sdp_offer[:100] if sdp_offer else 'None'}")
+
 		if not sdp_offer:
 			error_msg = "No SDP offer found in call record. Cannot answer call."
 			print(f"ERROR: {error_msg}")
+
+			# Get all fields from the database to debug
+			all_fields = frappe.db.get_value(
+				"WhatsApp Call",
+				call_doc.name,
+				["name", "call_id", "customer_number", "sdp_offer"],
+				as_dict=True
+			)
+			print(f"All fields from DB: {all_fields}")
+
 			frappe.log_error(
-				message=f"Call ID: {call_id}\nCall Name: {call_doc.name}\nSDP Offer field is empty",
+				message=f"Call ID: {call_id}\nCall Name: {call_doc.name}\nSDP Offer field is empty\nDB Fields: {all_fields}",
 				title="Answer Call - No SDP Offer"
 			)
 			frappe.throw(_(error_msg))
