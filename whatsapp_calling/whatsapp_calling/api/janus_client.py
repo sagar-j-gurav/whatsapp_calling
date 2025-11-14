@@ -152,49 +152,71 @@ class JanusClient:
 
 	def negotiate_sdp(self, sdp_offer):
 		"""
-		Negotiate SDP with Janus for incoming WhatsApp call
+		Negotiate SDP with Janus AudioBridge for incoming WhatsApp call
 
 		Args:
 			sdp_offer: SDP offer string from WhatsApp webhook
 
 		Returns:
-			dict with session_id, handle_id, sdp_answer
+			dict with session_id, handle_id, room_id, sdp_answer
 		"""
-		print("=== Starting Janus SDP Negotiation ===")
+		print("=== Starting Janus SDP Negotiation (AudioBridge) ===")
 
 		# Create session
 		session_id = self.create_session()
 		print(f"✓ Created Janus session: {session_id}")
 
-		# Attach VideoCall plugin for peer-to-peer SDP negotiation
-		handle_id = self.attach_plugin(session_id, plugin="janus.plugin.videocall")
-		print(f"✓ Attached VideoCall plugin: {handle_id}")
+		# Attach AudioBridge plugin
+		handle_id = self.attach_plugin(session_id, plugin="janus.plugin.audiobridge")
+		print(f"✓ Attached AudioBridge plugin: {handle_id}")
 
-		# Send SDP offer to Janus and get answer
+		# Create a room for this call
+		room_id = secrets.randbelow(999999)
 		url = f"{self.base_url}/{session_id}/{handle_id}"
 
-		payload = {
+		# Step 1: Create AudioBridge room
+		create_payload = {
 			"janus": "message",
 			"transaction": self._generate_transaction_id(),
 			"body": {
-				"request": "call",
-				"username": f"whatsapp_call_{secrets.token_hex(4)}"
+				"request": "create",
+				"room": room_id,
+				"description": f"WhatsApp Call Room {room_id}",
+				"sampling_rate": 48000,  # WhatsApp uses 48kHz
+				"audiolevel_event": False
+			}
+		}
+		if self.api_secret:
+			create_payload["apisecret"] = self.api_secret
+
+		print(f"Creating AudioBridge room {room_id}...")
+		response = requests.post(url, json=create_payload, timeout=10)
+		response.raise_for_status()
+		print(f"✓ Room created: {room_id}")
+
+		# Step 2: Join the room with WhatsApp's SDP offer
+		join_payload = {
+			"janus": "message",
+			"transaction": self._generate_transaction_id(),
+			"body": {
+				"request": "join",
+				"room": room_id,
+				"display": "WhatsApp Caller"
 			},
 			"jsep": {
 				"type": "offer",
 				"sdp": sdp_offer
 			}
 		}
-
 		if self.api_secret:
-			payload["apisecret"] = self.api_secret
+			join_payload["apisecret"] = self.api_secret
 
-		print(f"Sending SDP offer to Janus (first 100 chars): {sdp_offer[:100]}...")
-		response = requests.post(url, json=payload, timeout=10)
+		print(f"Joining room with SDP offer (first 100 chars): {sdp_offer[:100]}...")
+		response = requests.post(url, json=join_payload, timeout=10)
 		response.raise_for_status()
 
 		data = response.json()
-		print(f"Janus response: {json.dumps(data, indent=2)}")
+		print(f"Janus join response: {json.dumps(data, indent=2)}")
 
 		# Extract SDP answer from response
 		if "jsep" in data and data["jsep"]["type"] == "answer":
@@ -204,6 +226,7 @@ class JanusClient:
 			return {
 				"session_id": session_id,
 				"handle_id": handle_id,
+				"room_id": room_id,
 				"sdp_answer": sdp_answer
 			}
 		else:

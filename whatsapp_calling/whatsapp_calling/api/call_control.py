@@ -157,15 +157,18 @@ def answer_call(call_id):
 		sdp_answer = janus_result["sdp_answer"]
 		janus_session_id = janus_result["session_id"]
 		janus_handle_id = janus_result["handle_id"]
+		janus_room_id = janus_result["room_id"]
 
 		print(f"✓ Janus negotiation complete")
 		print(f"  Session ID: {janus_session_id}")
 		print(f"  Handle ID: {janus_handle_id}")
+		print(f"  Room ID: {janus_room_id}")
 		print(f"  SDP Answer (first 100 chars): {sdp_answer[:100]}...")
 
 		# Update call record with Janus info
 		call_doc.janus_session_id = janus_session_id
 		call_doc.janus_handle_id = janus_handle_id
+		call_doc.janus_room_id = str(janus_room_id)
 		call_doc.status = "Answered"
 		call_doc.assigned_to = frappe.session.user
 		call_doc.answered_at = frappe.utils.now()
