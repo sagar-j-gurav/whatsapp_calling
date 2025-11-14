@@ -218,10 +218,11 @@ class JanusClient:
 		data = response.json()
 		print(f"Janus join response: {json.dumps(data, indent=2)}")
 
-		# Extract SDP answer from response
+		# Check if we got an immediate answer
 		if "jsep" in data and data["jsep"]["type"] == "answer":
 			sdp_answer = data["jsep"]["sdp"]
-			print(f"✓ Received SDP answer from Janus (first 100 chars): {sdp_answer[:100]}...")
+			print(f"✓ Received SDP answer immediately")
+			print(f"  SDP Answer (first 100 chars): {sdp_answer[:100]}...")
 
 			return {
 				"session_id": session_id,
@@ -229,14 +230,51 @@ class JanusClient:
 				"room_id": room_id,
 				"sdp_answer": sdp_answer
 			}
-		else:
-			# Sometimes Janus sends answer in a follow-up event
-			# Need to poll for it or handle async event
+
+		# Janus sent an "ack" - need to poll for events to get the answer
+		if data.get("janus") == "ack":
+			print("Janus sent 'ack', polling for SDP answer event...")
+
+			# Poll for events (max 5 seconds, check every 100ms)
+			import time
+			max_attempts = 50
+			for attempt in range(max_attempts):
+				time.sleep(0.1)  # Wait 100ms between polls
+
+				# Get events from Janus session
+				events_url = f"{self.base_url}/{session_id}?maxev=1"
+				event_response = requests.get(events_url, timeout=5)
+
+				if event_response.status_code == 200:
+					event_data = event_response.json()
+					print(f"Poll attempt {attempt + 1}: {event_data.get('janus', 'no janus field')}")
+
+					# Check if this event has the JSEP answer
+					if "jsep" in event_data and event_data["jsep"]["type"] == "answer":
+						sdp_answer = event_data["jsep"]["sdp"]
+						print(f"✓ Received SDP answer from event after {attempt + 1} attempts")
+						print(f"  SDP Answer (first 100 chars): {sdp_answer[:100]}...")
+
+						return {
+							"session_id": session_id,
+							"handle_id": handle_id,
+							"room_id": room_id,
+							"sdp_answer": sdp_answer
+						}
+
+			# Timeout - no answer received
 			frappe.log_error(
-				message=f"No SDP answer in immediate response. Data: {json.dumps(data, indent=2)}",
-				title="Janus SDP Negotiation - No Answer"
+				message=f"Polled {max_attempts} times but no SDP answer received",
+				title="Janus SDP Negotiation - Timeout"
 			)
-			raise Exception("No SDP answer received from Janus")
+			raise Exception("Timeout waiting for SDP answer from Janus")
+
+		# Unexpected response
+		frappe.log_error(
+			message=f"Unexpected Janus response. Data: {json.dumps(data, indent=2)}",
+			title="Janus SDP Negotiation - Unexpected Response"
+		)
+		raise Exception("Unexpected response from Janus")
 
 	def _generate_transaction_id(self):
 		"""Generate random transaction ID"""
