@@ -185,10 +185,18 @@ whatsapp_calling.CallWidget = class {
 		// Create WhatsApp-style overlay
 		const overlay = $(`
 			<div class="whatsapp-call-overlay" id="wa-call-overlay">
-				<div class="whatsapp-call-card">
+				<div class="whatsapp-call-card" id="wa-call-card">
 					<!-- Header -->
-					<div class="wa-call-header">
+					<div class="wa-call-header" id="wa-call-drag-handle">
 						<div class="wa-call-status">WhatsApp Voice Call</div>
+						<button class="wa-call-expand-btn" id="wa-expand-btn" title="Maximize">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<polyline points="15 3 21 3 21 9"></polyline>
+								<polyline points="9 21 3 21 3 15"></polyline>
+								<line x1="21" y1="3" x2="14" y2="10"></line>
+								<line x1="3" y1="21" x2="10" y2="14"></line>
+							</svg>
+						</button>
 					</div>
 
 					<!-- Caller Info -->
@@ -255,6 +263,80 @@ whatsapp_calling.CallWidget = class {
 			this.stop_ringtone();
 			this.answer_incoming_call(call_data.call_id);
 			this.hide_call_overlay();
+		});
+
+		// Maximize/Minimize toggle
+		$('#wa-expand-btn').on('click', (e) => {
+			e.stopPropagation();
+			const card = $('#wa-call-card');
+			card.toggleClass('maximized');
+
+			// Update button icon
+			const btn = $('#wa-expand-btn');
+			if (card.hasClass('maximized')) {
+				btn.attr('title', 'Minimize');
+				btn.html(`
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<polyline points="4 14 10 14 10 20"></polyline>
+						<polyline points="20 10 14 10 14 4"></polyline>
+						<line x1="14" y1="10" x2="21" y2="3"></line>
+						<line x1="3" y1="21" x2="10" y2="14"></line>
+					</svg>
+				`);
+			} else {
+				btn.attr('title', 'Maximize');
+				btn.html(`
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<polyline points="15 3 21 3 21 9"></polyline>
+						<polyline points="9 21 3 21 3 15"></polyline>
+						<line x1="21" y1="3" x2="14" y2="10"></line>
+						<line x1="3" y1="21" x2="10" y2="14"></line>
+					</svg>
+				`);
+			}
+		});
+
+		// Make draggable
+		this.make_draggable($('#wa-call-card'), $('#wa-call-drag-handle'));
+	}
+
+	make_draggable(element, handle) {
+		let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+
+		handle.on('mousedown', (e) => {
+			// Don't drag if maximized or clicking expand button
+			if (element.hasClass('maximized') || $(e.target).closest('#wa-expand-btn').length) {
+				return;
+			}
+
+			e.preventDefault();
+			pos3 = e.clientX;
+			pos4 = e.clientY;
+
+			$(document).on('mouseup.drag', () => {
+				$(document).off('mouseup.drag mousemove.drag');
+			});
+
+			$(document).on('mousemove.drag', (e) => {
+				e.preventDefault();
+				pos1 = pos3 - e.clientX;
+				pos2 = pos4 - e.clientY;
+				pos3 = e.clientX;
+				pos4 = e.clientY;
+
+				const parent = element.parent();
+				let newTop = parent.offset().top - pos2;
+				let newRight = $(window).width() - parent.offset().left - parent.width() + pos1;
+
+				// Keep within viewport
+				newTop = Math.max(0, Math.min(newTop, $(window).height() - element.height()));
+				newRight = Math.max(0, Math.min(newRight, $(window).width() - element.width()));
+
+				parent.css({
+					top: newTop + 'px',
+					right: newRight + 'px'
+				});
+			});
 		});
 	}
 
@@ -440,21 +522,73 @@ whatsapp_calling.CallWidget = class {
 	}
 
 	play_ringtone() {
-		// Create audio element for ringtone
-		const audio = document.createElement('audio');
-		audio.id = 'whatsapp_ringtone';
-		audio.loop = true;
-		audio.src = '/assets/whatsapp_calling/sounds/ringtone.mp3';
-		document.body.appendChild(audio);
-		audio.play().catch(e => console.log('Ringtone play failed:', e));
+		try {
+			// Use browser's built-in beep or oscillator as ringtone
+			const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+			const oscillator = audioContext.createOscillator();
+			const gainNode = audioContext.createGain();
+
+			oscillator.connect(gainNode);
+			gainNode.connect(audioContext.destination);
+
+			oscillator.frequency.value = 800; // Hz
+			oscillator.type = 'sine';
+			gainNode.gain.value = 0.3;
+
+			// Create beeping pattern
+			let isPlaying = true;
+			this.ringtone_interval = setInterval(() => {
+				if (isPlaying) {
+					oscillator.start(0);
+					setTimeout(() => {
+						try {
+							oscillator.stop();
+						} catch (e) {
+							// Oscillator already stopped
+						}
+					}, 200);
+				}
+			}, 1000);
+
+			// Store context for cleanup
+			this.ringtone_context = audioContext;
+			this.ringtone_oscillator = oscillator;
+
+			console.log('Playing ringtone (oscillator)');
+		} catch (e) {
+			console.log('Ringtone initialization failed:', e);
+			// Fallback: Use system notification sound
+			try {
+				const audio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==');
+				audio.loop = true;
+				audio.play().catch(err => console.log('Fallback ringtone failed:', err));
+			} catch (err) {
+				console.log('All ringtone methods failed');
+			}
+		}
 	}
 
 	stop_ringtone() {
+		// Stop oscillator interval
+		if (this.ringtone_interval) {
+			clearInterval(this.ringtone_interval);
+			this.ringtone_interval = null;
+		}
+
+		// Close audio context
+		if (this.ringtone_context) {
+			this.ringtone_context.close().catch(e => console.log('AudioContext close failed:', e));
+			this.ringtone_context = null;
+		}
+
+		// Clean up any legacy audio element
 		const ringtone = document.getElementById('whatsapp_ringtone');
 		if (ringtone) {
 			ringtone.pause();
 			ringtone.remove();
 		}
+
+		console.log('Ringtone stopped');
 	}
 };
 

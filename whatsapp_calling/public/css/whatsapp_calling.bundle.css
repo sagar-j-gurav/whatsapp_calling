@@ -411,69 +411,98 @@
 	}
 }
 
-/* WhatsApp-Style Call Overlay */
+/* WhatsApp-Style Call Overlay - Small Draggable Popup */
 .whatsapp-call-overlay {
 	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background: rgba(0, 0, 0, 0.85);
-	backdrop-filter: blur(10px);
-	-webkit-backdrop-filter: blur(10px);
-	display: flex;
-	align-items: center;
-	justify-content: center;
+	top: 20px;
+	right: 20px;
 	z-index: 10000;
 	opacity: 0;
-	transition: opacity 0.3s ease;
+	transition: opacity 0.3s ease, transform 0.3s ease;
+	transform: translateY(-20px);
 }
 
 .whatsapp-call-overlay.show {
 	opacity: 1;
+	transform: translateY(0);
 }
 
 .whatsapp-call-card {
 	background: linear-gradient(135deg, #0a2e1c 0%, #0d3a24 100%);
-	border-radius: 24px;
-	padding: 48px 40px;
-	max-width: 420px;
-	width: 90%;
-	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-	transform: scale(0.9);
-	transition: transform 0.3s ease;
+	border-radius: 16px;
+	padding: 24px;
+	width: 360px;
+	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+	cursor: move;
 	position: relative;
 }
 
-.whatsapp-call-overlay.show .whatsapp-call-card {
-	transform: scale(1);
+.whatsapp-call-card.maximized {
+	position: fixed;
+	top: 50% !important;
+	left: 50% !important;
+	right: auto !important;
+	transform: translate(-50%, -50%) !important;
+	width: 500px;
+	padding: 40px;
 }
 
 /* Header */
 .wa-call-header {
-	text-align: center;
-	margin-bottom: 36px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20px;
+	cursor: move;
 }
 
 .wa-call-status {
 	color: rgba(255, 255, 255, 0.7);
-	font-size: 14px;
+	font-size: 12px;
 	font-weight: 500;
 	text-transform: uppercase;
 	letter-spacing: 1px;
 }
 
+.wa-call-expand-btn {
+	background: rgba(255, 255, 255, 0.1);
+	border: none;
+	color: white;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.2s ease;
+}
+
+.wa-call-expand-btn:hover {
+	background: rgba(255, 255, 255, 0.2);
+}
+
+.wa-call-expand-btn svg {
+	width: 14px;
+	height: 14px;
+}
+
 /* Caller Content */
 .wa-call-content {
 	text-align: center;
-	margin-bottom: 48px;
+	margin-bottom: 24px;
 }
 
 .wa-caller-avatar {
-	margin: 0 auto 24px;
+	margin: 0 auto 16px;
+	width: 64px;
+	height: 64px;
+	animation: pulse-avatar 2s ease-in-out infinite;
+}
+
+.whatsapp-call-card.maximized .wa-caller-avatar {
 	width: 80px;
 	height: 80px;
-	animation: pulse-avatar 2s ease-in-out infinite;
 }
 
 @keyframes pulse-avatar {
@@ -488,31 +517,47 @@
 }
 
 .wa-caller-name {
-	font-size: 28px;
+	font-size: 20px;
 	font-weight: 600;
 	color: white;
-	margin-bottom: 8px;
+	margin-bottom: 4px;
 	line-height: 1.3;
 }
 
+.whatsapp-call-card.maximized .wa-caller-name {
+	font-size: 28px;
+	margin-bottom: 8px;
+}
+
 .wa-caller-number {
-	font-size: 16px;
+	font-size: 14px;
 	color: rgba(255, 255, 255, 0.8);
+	margin-bottom: 12px;
+}
+
+.whatsapp-call-card.maximized .wa-caller-number {
+	font-size: 16px;
 	margin-bottom: 16px;
 }
 
 .wa-lead-link {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
+	gap: 4px;
 	color: #25D366;
-	font-size: 14px;
+	font-size: 12px;
 	text-decoration: none;
-	padding: 8px 16px;
-	border-radius: 20px;
+	padding: 6px 12px;
+	border-radius: 16px;
 	background: rgba(37, 211, 102, 0.15);
 	transition: all 0.2s ease;
 	margin-top: 8px;
+}
+
+.whatsapp-call-card.maximized .wa-lead-link {
+	font-size: 14px;
+	padding: 8px 16px;
+	border-radius: 20px;
 }
 
 .wa-lead-link:hover {
@@ -523,11 +568,16 @@
 }
 
 .wa-call-ringing {
-	margin-top: 24px;
-	font-size: 16px;
+	margin-top: 16px;
+	font-size: 14px;
 	color: rgba(255, 255, 255, 0.9);
 	font-weight: 500;
 	animation: fade-pulse 1.5s ease-in-out infinite;
+}
+
+.whatsapp-call-card.maximized .wa-call-ringing {
+	font-size: 16px;
+	margin-top: 20px;
 }
 
 @keyframes fade-pulse {
@@ -544,6 +594,11 @@
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	gap: 40px;
+	margin-top: 16px;
+}
+
+.whatsapp-call-card.maximized .wa-call-actions {
 	gap: 60px;
 	margin-top: 24px;
 }
@@ -553,12 +608,12 @@
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: 12px;
+	gap: 8px;
 	background: none;
 	border: none;
 	cursor: pointer;
 	transition: all 0.2s ease;
-	padding: 8px;
+	padding: 4px;
 }
 
 .wa-btn:hover {
@@ -570,10 +625,14 @@
 }
 
 .wa-btn svg {
-	padding: 20px;
+	padding: 14px;
 	border-radius: 50%;
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 	transition: all 0.2s ease;
+}
+
+.whatsapp-call-card.maximized .wa-btn svg {
+	padding: 20px;
 }
 
 .wa-btn-decline svg {
@@ -596,34 +655,49 @@
 
 .wa-btn span {
 	color: white;
-	font-size: 14px;
+	font-size: 11px;
 	font-weight: 600;
 	text-transform: uppercase;
 	letter-spacing: 0.5px;
 }
 
+.whatsapp-call-card.maximized .wa-btn span {
+	font-size: 14px;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
+	.whatsapp-call-overlay {
+		top: 10px;
+		right: 10px;
+		left: 10px;
+	}
+
 	.whatsapp-call-card {
-		padding: 40px 24px;
-		max-width: 95%;
+		width: auto;
+		padding: 20px;
+	}
+
+	.whatsapp-call-card.maximized {
+		width: 90%;
+		padding: 32px 24px;
 	}
 
 	.wa-caller-name {
-		font-size: 24px;
+		font-size: 18px;
 	}
 
 	.wa-caller-number {
-		font-size: 14px;
+		font-size: 13px;
 	}
 
 	.wa-call-actions {
-		gap: 40px;
+		gap: 32px;
 	}
 
 	.wa-btn svg {
-		padding: 16px;
-		width: 24px;
-		height: 24px;
+		padding: 12px;
+		width: 20px;
+		height: 20px;
 	}
 }
