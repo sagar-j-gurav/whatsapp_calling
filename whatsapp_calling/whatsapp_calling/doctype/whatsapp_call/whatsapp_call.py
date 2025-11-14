@@ -35,10 +35,17 @@ class WhatsAppCall(Document):
 	def after_insert(self):
 		"""Link call to Lead timeline"""
 		if self.lead:
-			self.add_comment(
-				"Info",
-				f"WhatsApp Call {self.status}: {self.duration_seconds or 0}s"
-			)
+			try:
+				self.add_comment(
+					"Info",
+					f"WhatsApp Call {self.status}: {self.duration_seconds or 0}s"
+				)
+			except Exception as e:
+				# Log error but don't fail - CRM app may have compatibility issues
+				frappe.log_error(
+					message=f"Failed to add comment to CRM Lead: {str(e)}",
+					title="WhatsApp Call - Comment Failed"
+				)
 
 	def on_update(self):
 		"""Update related records on status change"""
