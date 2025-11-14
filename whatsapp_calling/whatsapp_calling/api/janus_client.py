@@ -150,6 +150,71 @@ class JanusClient:
 		except Exception as e:
 			frappe.log_error(message=str(e), title="Janus Cleanup Error")
 
+	def negotiate_sdp(self, sdp_offer):
+		"""
+		Negotiate SDP with Janus for incoming WhatsApp call
+
+		Args:
+			sdp_offer: SDP offer string from WhatsApp webhook
+
+		Returns:
+			dict with session_id, handle_id, sdp_answer
+		"""
+		print("=== Starting Janus SDP Negotiation ===")
+
+		# Create session
+		session_id = self.create_session()
+		print(f"✓ Created Janus session: {session_id}")
+
+		# Attach VideoCall plugin for peer-to-peer SDP negotiation
+		handle_id = self.attach_plugin(session_id, plugin="janus.plugin.videocall")
+		print(f"✓ Attached VideoCall plugin: {handle_id}")
+
+		# Send SDP offer to Janus and get answer
+		url = f"{self.base_url}/{session_id}/{handle_id}"
+
+		payload = {
+			"janus": "message",
+			"transaction": self._generate_transaction_id(),
+			"body": {
+				"request": "call",
+				"username": f"whatsapp_call_{secrets.token_hex(4)}"
+			},
+			"jsep": {
+				"type": "offer",
+				"sdp": sdp_offer
+			}
+		}
+
+		if self.api_secret:
+			payload["apisecret"] = self.api_secret
+
+		print(f"Sending SDP offer to Janus (first 100 chars): {sdp_offer[:100]}...")
+		response = requests.post(url, json=payload, timeout=10)
+		response.raise_for_status()
+
+		data = response.json()
+		print(f"Janus response: {json.dumps(data, indent=2)}")
+
+		# Extract SDP answer from response
+		if "jsep" in data and data["jsep"]["type"] == "answer":
+			sdp_answer = data["jsep"]["sdp"]
+			print(f"✓ Received SDP answer from Janus (first 100 chars): {sdp_answer[:100]}...")
+
+			return {
+				"session_id": session_id,
+				"handle_id": handle_id,
+				"sdp_answer": sdp_answer
+			}
+		else:
+			# Sometimes Janus sends answer in a follow-up event
+			# Need to poll for it or handle async event
+			frappe.log_error(
+				message=f"No SDP answer in immediate response. Data: {json.dumps(data, indent=2)}",
+				title="Janus SDP Negotiation - No Answer"
+			)
+			raise Exception("No SDP answer received from Janus")
+
 	def _generate_transaction_id(self):
 		"""Generate random transaction ID"""
 		return secrets.token_hex(12)

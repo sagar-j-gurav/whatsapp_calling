@@ -91,7 +91,7 @@ def make_call(lead_name, mobile_number):
 @frappe.whitelist()
 def answer_call(call_id):
 	"""
-	Answer incoming WhatsApp call
+	Answer incoming WhatsApp call with proper SDP negotiation
 
 	Args:
 		call_id: WhatsApp call ID
@@ -100,54 +100,93 @@ def answer_call(call_id):
 		dict with webrtc_config
 	"""
 	try:
+		print("=" * 80)
+		print(f"ANSWERING CALL: {call_id}")
+		print("=" * 80)
+
 		# Get call record
 		call_doc = frappe.get_doc("WhatsApp Call", {"call_id": call_id})
+		print(f"Found call record: {call_doc.name}")
 
-		# Update call record
+		# Get SDP offer from call record (stored from webhook)
+		sdp_offer = call_doc.sdp_offer
+		if not sdp_offer:
+			error_msg = "No SDP offer found in call record. Cannot answer call."
+			print(f"ERROR: {error_msg}")
+			frappe.log_error(
+				message=f"Call ID: {call_id}\nCall Name: {call_doc.name}\nSDP Offer field is empty",
+				title="Answer Call - No SDP Offer"
+			)
+			frappe.throw(_(error_msg))
+
+		print(f"Retrieved SDP offer (first 100 chars): {sdp_offer[:100]}...")
+
+		# Negotiate SDP with Janus
+		print("Negotiating SDP with Janus...")
+		janus = JanusClient()
+		janus_result = janus.negotiate_sdp(sdp_offer)
+
+		sdp_answer = janus_result["sdp_answer"]
+		janus_session_id = janus_result["session_id"]
+		janus_handle_id = janus_result["handle_id"]
+
+		print(f"✓ Janus negotiation complete")
+		print(f"  Session ID: {janus_session_id}")
+		print(f"  Handle ID: {janus_handle_id}")
+		print(f"  SDP Answer (first 100 chars): {sdp_answer[:100]}...")
+
+		# Update call record with Janus info
+		call_doc.janus_session_id = janus_session_id
+		call_doc.janus_handle_id = janus_handle_id
 		call_doc.status = "Answered"
 		call_doc.assigned_to = frappe.session.user
 		call_doc.answered_at = frappe.utils.now()
-
-		# Create Janus room if not exists
-		if not call_doc.janus_room_id:
-			janus = JanusClient()
-			room_config = janus.setup_call_room()
-			call_doc.janus_room_id = room_config["room_id"]
-			call_doc.janus_session_id = room_config["session_id"]
-		else:
-			room_config = {
-				"room_id": call_doc.janus_room_id,
-				"session_id": call_doc.janus_session_id
-			}
-
 		call_doc.save(ignore_permissions=True)
+		print(f"✓ Updated call record with Janus session info")
 
-		# Tell WhatsApp to connect to Janus
+		# Get WhatsApp API credentials
 		wa_number = frappe.get_doc("WhatsApp Number", call_doc.business_number)
 		wa_api = WhatsAppAPI(
 			wa_number.phone_number_id,
-			wa_number.get_access_token()
+			wa_number.get_password('access_token')
 		)
 
-		# This tells WhatsApp where to send media
-		wa_api.answer_call(call_id, {
-			"janus_url": frappe.get_single("WhatsApp Settings").janus_ws_url,
-			"room_id": call_doc.janus_room_id
-		})
+		# Send pre_accept to WhatsApp (optional but recommended)
+		print("Sending pre_accept to WhatsApp...")
+		try:
+			wa_api.pre_accept_call(call_id, sdp_answer)
+			print("✓ Pre-accept sent successfully")
+		except Exception as e:
+			print(f"Pre-accept failed (non-critical): {str(e)}")
+
+		# Send accept with SDP answer to WhatsApp
+		print("Sending accept to WhatsApp with SDP answer...")
+		wa_api.answer_call(call_id, sdp_answer)
+		print("✓ Call answered successfully")
 
 		frappe.db.commit()
+
+		print("=" * 80)
+		print("CALL ANSWER COMPLETE")
+		print("=" * 80)
 
 		return {
 			"success": True,
 			"webrtc_config": {
 				"janus_url": frappe.get_single("WhatsApp Settings").janus_ws_url,
-				"room_id": call_doc.janus_room_id,
-				"session_id": call_doc.janus_session_id
+				"session_id": janus_session_id,
+				"handle_id": janus_handle_id
 			}
 		}
 
 	except Exception as e:
-		frappe.log_error(message=str(e), title="Answer Call Error")
+		print(f"ERROR answering call: {str(e)}")
+		import traceback
+		traceback.print_exc()
+		frappe.log_error(
+			message=f"Call ID: {call_id}\nError: {str(e)}\n\n{traceback.format_exc()}",
+			title="Answer Call Error"
+		)
 		frappe.throw(_(str(e)))
 
 

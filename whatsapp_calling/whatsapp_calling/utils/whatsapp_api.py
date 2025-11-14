@@ -43,29 +43,61 @@ class WhatsAppAPI:
 			error_msg = response.json().get("error", {}).get("message", "Unknown error")
 			raise Exception(f"WhatsApp API Error: {error_msg}")
 
-	def answer_call(self, call_id, janus_config):
+	def pre_accept_call(self, call_id, sdp_answer):
 		"""
-		Answer incoming call and connect to Janus
+		Pre-accept incoming call (optional but recommended for faster connection)
 
 		Args:
 			call_id: WhatsApp call ID
-			janus_config: Dict with janus_url and room_id
+			sdp_answer: SDP answer from Janus
 		"""
-		# Correct WhatsApp API endpoint: POST /{phone_number_id}/calls
-		# NOT /calls/{call_id}/answer - call_id goes in the body!
 		url = f"{self.BASE_URL}/{self.phone_number_id}/calls"
 
 		payload = {
 			"messaging_product": "whatsapp",
 			"call_id": call_id,
-			"action": "accept",  # Can also be "pre_accept" for faster connection
+			"action": "pre_accept",
 			"session": {
 				"sdp_type": "answer",
-				# SDP answer would come from Janus - for now we're just accepting
-				"sdp": "v=0\r\no=- 0 0 IN IP4 0.0.0.0\r\ns=-\r\nt=0 0\r\n"
+				"sdp": sdp_answer
 			}
 		}
 
+		response = requests.post(url, json=payload, headers=self.headers, timeout=10)
+
+		if response.status_code != 200:
+			error_data = response.json().get("error", {})
+			error_msg = error_data.get("message", "Unknown error")
+			frappe.log_error(
+				message=f"Pre-accept Error: {error_msg}\nResponse: {response.text}",
+				title="WhatsApp Pre-Accept Error"
+			)
+			# Don't raise - pre_accept is optional
+			return None
+
+		return response.json()
+
+	def answer_call(self, call_id, sdp_answer):
+		"""
+		Answer incoming call with SDP answer from Janus
+
+		Args:
+			call_id: WhatsApp call ID
+			sdp_answer: SDP answer string from Janus
+		"""
+		url = f"{self.BASE_URL}/{self.phone_number_id}/calls"
+
+		payload = {
+			"messaging_product": "whatsapp",
+			"call_id": call_id,
+			"action": "accept",
+			"session": {
+				"sdp_type": "answer",
+				"sdp": sdp_answer
+			}
+		}
+
+		print(f"Sending accept to WhatsApp with SDP answer (first 100 chars): {sdp_answer[:100]}...")
 		response = requests.post(url, json=payload, headers=self.headers, timeout=10)
 
 		if response.status_code != 200:
@@ -78,6 +110,7 @@ class WhatsAppAPI:
 			)
 			raise Exception(f"Failed to answer call: {error_msg}")
 
+		print(f"✓ WhatsApp accepted call successfully")
 		return response.json()
 
 	def end_call(self, call_id):

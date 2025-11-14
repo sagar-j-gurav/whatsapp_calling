@@ -130,6 +130,11 @@ def handle_call_event(call_data, metadata, wa_profile_name=None):
 	to_number = metadata.get("display_phone_number")
 	timestamp = call_data.get("timestamp")
 
+	# Extract SDP session data for incoming calls
+	session = call_data.get("session", {})
+	sdp_offer = session.get("sdp")
+	sdp_type = session.get("sdp_type")
+
 	print("-" * 80)
 	print("HANDLING CALL EVENT")
 	print(f"Call ID: {call_id}")
@@ -138,6 +143,9 @@ def handle_call_event(call_data, metadata, wa_profile_name=None):
 	print(f"From: {from_number}")
 	print(f"To: {to_number}")
 	print(f"Timestamp: {timestamp}")
+	if sdp_offer:
+		print(f"SDP Type: {sdp_type}")
+		print(f"SDP Offer (first 100 chars): {sdp_offer[:100]}...")
 	print("-" * 80)
 
 	# Get or create call record
@@ -214,8 +222,15 @@ def handle_call_event(call_data, metadata, wa_profile_name=None):
 				"lead": lead,
 				"contact_name": contact_name
 			})
+
 			call_doc.insert(ignore_permissions=True)
 			print(f"✓ Created call record: {call_doc.name}")
+
+			# Store SDP offer after insert so we can use db_set
+			if sdp_offer:
+				frappe.db.set_value("WhatsApp Call", call_doc.name, "sdp_offer", sdp_offer, update_modified=False)
+				frappe.db.commit()
+				print(f"✓ Stored SDP offer for call")
 
 			frappe.log_error(
 				message=f"Call record created successfully:\nID: {call_doc.name}\nCall ID: {call_id}\nFrom: {from_number}\nTo: {to_number}",

@@ -29,9 +29,11 @@
   "technical_section",
   "janus_room_id",
   "janus_session_id",
+  "janus_handle_id",
   "column_break_4",
   "call_quality",
   "failure_reason",
+  "sdp_offer",
   "recording_section",
   "recording_file",
   "recording_duration",
@@ -185,6 +187,12 @@
    "read_only": 1
   },
   {
+   "fieldname": "janus_handle_id",
+   "fieldtype": "Data",
+   "label": "Janus Handle ID",
+   "read_only": 1
+  },
+  {
    "fieldname": "column_break_4",
    "fieldtype": "Column Break"
   },
@@ -198,6 +206,13 @@
    "fieldname": "failure_reason",
    "fieldtype": "Text",
    "label": "Failure Reason"
+  },
+  {
+   "fieldname": "sdp_offer",
+   "fieldtype": "Long Text",
+   "label": "SDP Offer",
+   "read_only": 1,
+   "description": "SDP offer from WhatsApp webhook"
   },
   {
    "fieldname": "recording_section",
