@@ -232,17 +232,24 @@ def handle_call_event(call_data, metadata, wa_profile_name=None):
 				"status": "Ringing",
 				"initiated_at": frappe.utils.now(),
 				"lead": lead,
-				"contact_name": contact_name
+				"contact_name": contact_name,
+				"sdp_offer": sdp_offer  # Add SDP offer during document creation
 			})
 
 			call_doc.insert(ignore_permissions=True)
 			print(f"✓ Created call record: {call_doc.name}")
 
-			# Store SDP offer after insert so we can use db_set
+			# Verify SDP offer was saved
 			if sdp_offer:
-				frappe.db.set_value("WhatsApp Call", call_doc.name, "sdp_offer", sdp_offer, update_modified=False)
-				frappe.db.commit()
-				print(f"✓ Stored SDP offer for call")
+				saved_sdp = frappe.db.get_value("WhatsApp Call", call_doc.name, "sdp_offer")
+				if saved_sdp:
+					print(f"✓ Verified SDP offer saved (length: {len(saved_sdp)} chars)")
+				else:
+					print(f"WARNING: SDP offer not saved! Attempting to save again...")
+					# Try using db_set as fallback
+					call_doc.db_set("sdp_offer", sdp_offer, update_modified=False)
+					frappe.db.commit()
+					print(f"✓ Stored SDP offer using db_set")
 
 			frappe.log_error(
 				message=f"Call record created successfully:\nID: {call_doc.name}\nCall ID: {call_id}\nFrom: {from_number}\nTo: {to_number}",
