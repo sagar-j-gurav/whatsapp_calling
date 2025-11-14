@@ -36,6 +36,7 @@ def verify_webhook():
 		# Return challenge as plain text using download response type
 		frappe.response['type'] = 'download'
 		frappe.response['filecontent'] = challenge
+		frappe.response['filename'] = 'challenge.txt'
 		frappe.response['content_type'] = 'text/plain; charset=utf-8'
 		frappe.response['display_content_as'] = 'inline'
 		return
