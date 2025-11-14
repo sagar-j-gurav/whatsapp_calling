@@ -17,12 +17,25 @@ whatsapp_calling.CallWidget = class {
 
 	setup_realtime_listeners() {
 		console.log('=== WhatsApp Call Widget: Setting up realtime listeners ===');
+		console.log('frappe.realtime object:', frappe.realtime);
+		console.log('Current user:', frappe.session.user);
 
 		// Listen for incoming calls
 		frappe.realtime.on('incoming_whatsapp_call', (data) => {
-			console.log('=== INCOMING WHATSAPP CALL EVENT RECEIVED ===');
-			console.log('Call data:', data);
-			this.show_incoming_call_dialog(data);
+			console.log('╔═══════════════════════════════════════════════════════╗');
+			console.log('║  INCOMING WHATSAPP CALL EVENT RECEIVED               ║');
+			console.log('╚═══════════════════════════════════════════════════════╝');
+			console.log('Call data:', JSON.stringify(data, null, 2));
+			console.log('Widget instance:', this);
+			console.log('About to call show_incoming_call_dialog...');
+
+			try {
+				this.show_incoming_call_dialog(data);
+				console.log('✓ show_incoming_call_dialog called successfully');
+			} catch (error) {
+				console.error('ERROR calling show_incoming_call_dialog:', error);
+				console.error('Error stack:', error.stack);
+			}
 		});
 
 		// Listen for call status updates
@@ -33,6 +46,16 @@ whatsapp_calling.CallWidget = class {
 		});
 
 		console.log('✓ Realtime listeners registered successfully');
+
+		// Test the realtime system
+		console.log('Testing if realtime events work...');
+		setTimeout(() => {
+			console.log('Emitting test event to self...');
+			frappe.realtime.on('test_event', (data) => {
+				console.log('✓ Test event received! Realtime is working.', data);
+			});
+			frappe.publish_realtime('test_event', { test: true });
+		}, 1000);
 	}
 
 	async initiate_call_from_lead(lead_name, mobile_number, lead_display_name) {
@@ -173,14 +196,30 @@ whatsapp_calling.CallWidget = class {
 	}
 
 	show_incoming_call_dialog(call_data) {
-		console.log('=== SHOWING INCOMING CALL DIALOG ===');
+		console.log('╔═══════════════════════════════════════════════════════╗');
+		console.log('║  SHOW_INCOMING_CALL_DIALOG - START                   ║');
+		console.log('╚═══════════════════════════════════════════════════════╝');
 		console.log('Call data:', call_data);
+		console.log('Step 1: Check for existing overlay...');
 
+		// Remove any existing overlay first
+		const existingOverlay = $('#wa-call-overlay');
+		if (existingOverlay.length > 0) {
+			console.log('Found existing overlay, removing it first...');
+			existingOverlay.remove();
+		} else {
+			console.log('No existing overlay found');
+		}
+
+		console.log('Step 2: Playing ringtone...');
 		// Play ringtone
 		this.play_ringtone();
+		console.log('✓ Ringtone playing');
 
+		console.log('Step 3: Storing call data...');
 		// Store call data
 		this.current_call_data = call_data;
+		console.log('✓ Call data stored');
 
 		// Format display name: Lead Name (WhatsApp Profile) or just WhatsApp Profile
 		let displayName = 'Unknown';
@@ -198,6 +237,10 @@ whatsapp_calling.CallWidget = class {
 			displayName = call_data.customer_name;
 		}
 
+		console.log('Step 4: Formatting display name...');
+		console.log('Display name will be:', displayName);
+
+		console.log('Step 5: Creating overlay HTML...');
 		// Create WhatsApp-style overlay
 		const overlay = $(`
 			<div class="whatsapp-call-overlay" id="wa-call-overlay">
@@ -259,13 +302,28 @@ whatsapp_calling.CallWidget = class {
 				</div>
 			</div>
 		`);
+		console.log('✓ Overlay HTML created. jQuery object:', overlay);
+		console.log('Overlay length:', overlay.length);
 
+		console.log('Step 6: Appending overlay to body...');
 		// Append to body
 		$('body').append(overlay);
+		console.log('✓ Overlay appended to body');
 
+		// Verify it's in the DOM
+		const checkOverlay = $('#wa-call-overlay');
+		console.log('Verification - Overlay in DOM:', checkOverlay.length > 0);
+		console.log('Overlay element:', checkOverlay[0]);
+		if (checkOverlay.length > 0) {
+			console.log('Overlay computed style:', window.getComputedStyle(checkOverlay[0]));
+		}
+
+		console.log('Step 7: Triggering show animation...');
 		// Trigger animation
 		setTimeout(() => {
 			overlay.addClass('show');
+			console.log('✓ Added "show" class to overlay');
+			console.log('Overlay classes:', overlay.attr('class'));
 		}, 10);
 
 		// Bind actions
@@ -312,8 +370,28 @@ whatsapp_calling.CallWidget = class {
 			}
 		});
 
+		console.log('Step 8: Setting up drag functionality...');
 		// Make draggable
 		this.make_draggable($('#wa-call-card'), $('#wa-call-drag-handle'));
+		console.log('✓ Drag functionality set up');
+
+		console.log('╔═══════════════════════════════════════════════════════╗');
+		console.log('║  SHOW_INCOMING_CALL_DIALOG - COMPLETE                ║');
+		console.log('╚═══════════════════════════════════════════════════════╝');
+	}
+
+	// Test function - can be called from console for debugging
+	test_show_popup() {
+		console.log('Testing popup with fake call data...');
+		this.show_incoming_call_dialog({
+			call_id: 'test_call_123',
+			call_name: 'WC-2024-00001',
+			customer_number: '+919876543210',
+			customer_name: 'Test Customer',
+			lead: null,
+			lead_name: 'Test Lead',
+			wa_profile_name: 'WhatsApp User'
+		});
 	}
 
 	make_draggable(element, handle) {
