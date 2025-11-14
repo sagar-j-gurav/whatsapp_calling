@@ -16,15 +16,23 @@ whatsapp_calling.CallWidget = class {
 	}
 
 	setup_realtime_listeners() {
+		console.log('=== WhatsApp Call Widget: Setting up realtime listeners ===');
+
 		// Listen for incoming calls
 		frappe.realtime.on('incoming_whatsapp_call', (data) => {
+			console.log('=== INCOMING WHATSAPP CALL EVENT RECEIVED ===');
+			console.log('Call data:', data);
 			this.show_incoming_call_dialog(data);
 		});
 
 		// Listen for call status updates
 		frappe.realtime.on('call_status_update', (data) => {
+			console.log('=== CALL STATUS UPDATE EVENT RECEIVED ===');
+			console.log('Status data:', data);
 			this.handle_status_update(data);
 		});
+
+		console.log('✓ Realtime listeners registered successfully');
 	}
 
 	async initiate_call_from_lead(lead_name, mobile_number, lead_display_name) {
@@ -165,6 +173,9 @@ whatsapp_calling.CallWidget = class {
 	}
 
 	show_incoming_call_dialog(call_data) {
+		console.log('=== SHOWING INCOMING CALL DIALOG ===');
+		console.log('Call data:', call_data);
+
 		// Play ringtone
 		this.play_ringtone();
 
@@ -449,7 +460,14 @@ whatsapp_calling.CallWidget = class {
 
 // Initialize on page load
 frappe.ready(() => {
+	console.log('=== WhatsApp Call Widget: Initializing ===');
+	console.log('Current user:', frappe.session.user);
+
 	if (frappe.session.user !== 'Guest') {
 		window.whatsapp_call_widget = new whatsapp_calling.CallWidget();
+		console.log('✓ WhatsApp Call Widget initialized successfully');
+		console.log('Widget instance:', window.whatsapp_call_widget);
+	} else {
+		console.log('⚠ Skipping widget initialization - user is Guest');
 	}
 });
