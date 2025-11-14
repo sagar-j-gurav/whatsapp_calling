@@ -35,8 +35,9 @@ def verify_webhook():
 	if mode == 'subscribe' and token == settings.get_password('webhook_verify_token'):
 		# Return challenge as plain text, not JSON
 		frappe.local.response.http_status_code = 200
-		frappe.local.response.type = "text"
-		frappe.local.response.data = challenge
+		frappe.local.response['type'] = 'binary'
+		frappe.local.response['filecontent'] = challenge
+		frappe.local.response['content_type'] = 'text/plain'
 		return
 	else:
 		frappe.local.response.http_status_code = 403
