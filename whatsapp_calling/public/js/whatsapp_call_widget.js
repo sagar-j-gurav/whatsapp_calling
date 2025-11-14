@@ -459,7 +459,7 @@ whatsapp_calling.CallWidget = class {
 };
 
 // Initialize on page load
-frappe.ready(() => {
+$(document).ready(function() {
 	console.log('=== WhatsApp Call Widget: Initializing ===');
 	console.log('Current user:', frappe.session.user);
 
