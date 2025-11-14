@@ -77,29 +77,44 @@ function test_webhook(frm) {
 					primary_action: function() {
 						// Make a test request to the webhook
 						fetch(test_url)
-							.then(response => response.text())
+							.then(response => {
+								// Check HTTP status first
+								if (!response.ok && response.status === 403) {
+									return response.text().then(text => {
+										frappe.msgprint({
+											title: __('❌ Webhook Verification Failed'),
+											message: __('Token validation failed (403 Forbidden).<br>Response: {0}<br><br>This means the webhook is working but the token does not match.', [text]),
+											indicator: 'red'
+										});
+										throw new Error('Token validation failed');
+									});
+								}
+								return response.text();
+							})
 							.then(data => {
 								if (data === test_challenge) {
 									frappe.msgprint({
 										title: __('✅ Webhook Test Successful'),
-										message: __('Your webhook is working correctly! You can now configure it in Meta.'),
+										message: __('Your webhook is working correctly! Token validated successfully. You can now configure it in Meta.'),
 										indicator: 'green'
 									});
 									d.hide();
 								} else {
 									frappe.msgprint({
 										title: __('⚠️ Unexpected Response'),
-										message: __('Received: {0}<br>Expected: {1}<br><br>The webhook is responding but may have an issue.', [data, test_challenge]),
+										message: __('Received: {0}<br>Expected: {1}<br><br>The webhook is responding but returned unexpected data.', [data.substring(0, 200), test_challenge]),
 										indicator: 'orange'
 									});
 								}
 							})
 							.catch(error => {
-								frappe.msgprint({
-									title: __('❌ Webhook Test Failed'),
-									message: __('Error: {0}<br><br>Make sure your site is accessible and the webhook endpoint is working.', [error.message]),
-									indicator: 'red'
-								});
+								if (error.message !== 'Token validation failed') {
+									frappe.msgprint({
+										title: __('❌ Webhook Test Failed'),
+										message: __('Error: {0}<br><br>Make sure your site is accessible and the webhook endpoint is working.', [error.message]),
+										indicator: 'red'
+									});
+								}
 							});
 					},
 					secondary_action_label: __('Close')

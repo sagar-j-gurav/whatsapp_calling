@@ -30,9 +30,12 @@ def verify_webhook():
 	token = frappe.form_dict.get('hub.verify_token')
 	challenge = frappe.form_dict.get('hub.challenge')
 
+	# Get settings and stored verify token
 	settings = frappe.get_single("WhatsApp Settings")
+	stored_token = settings.get_password('webhook_verify_token')
 
-	if mode == 'subscribe' and token == settings.get_password('webhook_verify_token'):
+	# Validate token
+	if mode == 'subscribe' and token and stored_token and token == stored_token:
 		# Return challenge as plain text using download response type
 		frappe.response['type'] = 'download'
 		frappe.response['filecontent'] = challenge
@@ -41,6 +44,11 @@ def verify_webhook():
 		frappe.response['display_content_as'] = 'inline'
 		return
 	else:
+		# Log failed verification attempts
+		frappe.log_error(
+			message=f"Webhook verification failed. Mode: {mode}, Token provided: {bool(token)}, Token stored: {bool(stored_token)}, Match: {token == stored_token if token and stored_token else False}",
+			title="Webhook Verification Failed"
+		)
 		frappe.local.response.http_status_code = 403
 		frappe.throw(_("Forbidden"))
 
