@@ -18,28 +18,23 @@ frappe.ui.form.on('WhatsApp Settings', {
 			}, __('Tests'));
 		}
 
-		// Test Webhook button
-		frm.add_custom_button(__('Test Webhook Verification'), function() {
-			test_webhook_verification(frm);
-		}, __('Tests'));
+		// Test Webhook button - only show if verify token is set
+		if (frm.doc.webhook_verify_token) {
+			frm.add_custom_button(__('Test Webhook Verification'), function() {
+				test_webhook_verification(frm);
+			}, __('Tests'));
+		}
 	}
 });
 
 function test_webhook_verification(frm) {
-	// Check if verify token is set
-	if (!frm.doc.webhook_verify_token) {
-		frappe.msgprint({
-			title: __('Missing Verify Token'),
-			message: __('Please set a Webhook Verify Token first and save the document.'),
-			indicator: 'red'
-		});
-		return;
+	// Generate webhook URL if not already set
+	let webhook_url = frm.doc.webhook_url;
+	if (!webhook_url) {
+		// Generate it dynamically (same as Python on_load)
+		webhook_url = window.location.origin + '/api/method/whatsapp_calling.whatsapp_calling.api.webhook.whatsapp_webhook';
 	}
 
-	// Show the webhook URL
-	const webhook_url = frm.doc.webhook_url;
-
-	// Create test URL with parameters
 	const verify_token = frm.doc.webhook_verify_token;
 	const test_challenge = 'TEST_CHALLENGE_' + Math.floor(Math.random() * 1000000);
 	const test_url = `${webhook_url}?hub.mode=subscribe&hub.verify_token=${verify_token}&hub.challenge=${test_challenge}`;
@@ -71,7 +66,7 @@ function test_webhook_verification(frm) {
 
 						<div style="background: #e8f5e9; padding: 12px; border-left: 4px solid #4caf50; margin-top: 20px;">
 							<strong>✓ Or test locally:</strong>
-							<p style="margin: 8px 0 0 0;">Click the button below to simulate the verification request.</p>
+							<p style="margin: 8px 0 0 0;">Click the button below to simulate Meta's verification request.</p>
 						</div>
 					</div>
 				`
@@ -85,14 +80,14 @@ function test_webhook_verification(frm) {
 				.then(data => {
 					if (data === test_challenge) {
 						frappe.msgprint({
-							title: __('Webhook Test Successful'),
-							message: __('Webhook verification is working correctly! The challenge was returned successfully.'),
+							title: __('✅ Webhook Test Successful'),
+							message: __('The webhook is working correctly! You can now use this URL in Meta.<br><br><strong>Next step:</strong> Copy the URL and verify token to Meta App Settings.'),
 							indicator: 'green'
 						});
 					} else {
 						frappe.msgprint({
-							title: __('Unexpected Response'),
-							message: __('Received: {0}<br>Expected: {1}', [data, test_challenge]),
+							title: __('⚠️ Unexpected Response'),
+							message: __('Received: {0}<br>Expected: {1}<br><br>The webhook is responding but may have an issue.', [data, test_challenge]),
 							indicator: 'orange'
 						});
 					}
@@ -100,8 +95,8 @@ function test_webhook_verification(frm) {
 				})
 				.catch(error => {
 					frappe.msgprint({
-						title: __('Webhook Test Failed'),
-						message: __('Error: {0}', [error.message]),
+						title: __('❌ Webhook Test Failed'),
+						message: __('Error: {0}<br><br>Make sure:<br>1. Your site is running<br>2. The webhook endpoint is accessible', [error.message]),
 						indicator: 'red'
 					});
 				});
