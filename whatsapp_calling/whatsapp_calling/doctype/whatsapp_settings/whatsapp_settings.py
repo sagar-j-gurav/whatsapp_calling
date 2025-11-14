@@ -26,3 +26,15 @@ class WhatsAppSettings(Document):
 				frappe.msgprint("Warning: Cannot connect to Janus Gateway", indicator='orange')
 		except Exception as e:
 			frappe.msgprint(f"Warning: Janus connection failed: {str(e)}", indicator='orange')
+
+	@frappe.whitelist()
+	def get_webhook_test_url(self):
+		"""Get webhook URL and verify token for testing"""
+		site_url = frappe.utils.get_url()
+		webhook_url = f"{site_url}/api/method/whatsapp_calling.whatsapp_calling.api.webhook.whatsapp_webhook"
+		verify_token = self.get_password('webhook_verify_token')
+
+		return {
+			"webhook_url": webhook_url,
+			"verify_token": verify_token
+		}
