@@ -3,6 +3,7 @@
 
 frappe.ui.form.on('WhatsApp Settings', {
 	refresh: function(frm) {
+		// Test Janus Connection button
 		if (frm.doc.janus_http_url) {
 			frm.add_custom_button(__('Test Janus Connection'), function() {
 				frappe.call({
@@ -14,7 +15,7 @@ frappe.ui.form.on('WhatsApp Settings', {
 						}
 					}
 				});
-			});
+			}, __('Tests'));
 		}
 	}
 });

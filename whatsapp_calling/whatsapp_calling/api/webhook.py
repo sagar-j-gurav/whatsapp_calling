@@ -4,6 +4,7 @@
 import frappe
 import json
 from frappe import _
+from werkzeug.wrappers import Response
 
 
 @frappe.whitelist(allow_guest=True, methods=['GET', 'POST'])
@@ -33,9 +34,12 @@ def verify_webhook():
 	settings = frappe.get_single("WhatsApp Settings")
 
 	if mode == 'subscribe' and token == settings.get_password('webhook_verify_token'):
-		return challenge
+		# Return challenge as plain text using werkzeug Response
+		frappe.local.response = Response(challenge, status=200, content_type='text/plain')
+		return
 	else:
-		frappe.throw(_("Webhook verification failed"), frappe.PermissionError)
+		frappe.local.response.http_status_code = 403
+		frappe.throw(_("Forbidden"))
 
 
 def process_webhook():
