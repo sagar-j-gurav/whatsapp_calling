@@ -51,15 +51,18 @@ class WhatsAppAPI:
 			call_id: WhatsApp call ID
 			janus_config: Dict with janus_url and room_id
 		"""
-		# URL-encode call_id to handle special characters
-		encoded_call_id = quote(call_id, safe='')
-		url = f"{self.BASE_URL}/{self.phone_number_id}/calls/{encoded_call_id}/answer"
+		# Correct WhatsApp API endpoint: POST /{phone_number_id}/calls
+		# NOT /calls/{call_id}/answer - call_id goes in the body!
+		url = f"{self.BASE_URL}/{self.phone_number_id}/calls"
 
 		payload = {
-			"media_server": {
-				"type": "janus",
-				"url": janus_config["janus_url"],
-				"room_id": str(janus_config["room_id"])
+			"messaging_product": "whatsapp",
+			"call_id": call_id,
+			"action": "accept",  # Can also be "pre_accept" for faster connection
+			"session": {
+				"sdp_type": "answer",
+				# SDP answer would come from Janus - for now we're just accepting
+				"sdp": "v=0\r\no=- 0 0 IN IP4 0.0.0.0\r\ns=-\r\nt=0 0\r\n"
 			}
 		}
 
@@ -70,7 +73,7 @@ class WhatsAppAPI:
 			error_msg = error_data.get("message", "Unknown error")
 			error_code = error_data.get("code", "N/A")
 			frappe.log_error(
-				message=f"WhatsApp API Error:\nURL: {url}\nStatus: {response.status_code}\nError Code: {error_code}\nMessage: {error_msg}\nResponse: {response.text}",
+				message=f"WhatsApp API Error:\nURL: {url}\nStatus: {response.status_code}\nError Code: {error_code}\nMessage: {error_msg}\nPayload: {payload}\nResponse: {response.text}",
 				title="Answer Call API Error"
 			)
 			raise Exception(f"Failed to answer call: {error_msg}")
@@ -79,15 +82,24 @@ class WhatsAppAPI:
 
 	def end_call(self, call_id):
 		"""End active call"""
-		# URL-encode call_id to handle special characters
-		encoded_call_id = quote(call_id, safe='')
-		url = f"{self.BASE_URL}/{self.phone_number_id}/calls/{encoded_call_id}/end"
+		# Correct WhatsApp API endpoint: POST /{phone_number_id}/calls
+		# Call_id goes in the body, not URL path
+		url = f"{self.BASE_URL}/{self.phone_number_id}/calls"
 
-		response = requests.post(url, headers=self.headers, timeout=10)
+		payload = {
+			"messaging_product": "whatsapp",
+			"call_id": call_id,
+			"action": "terminate"
+		}
+
+		response = requests.post(url, json=payload, headers=self.headers, timeout=10)
 
 		if response.status_code != 200:
 			error_msg = response.json().get("error", {}).get("message", "Unknown error")
-			frappe.log_error(message=error_msg, title="End Call Error")
+			frappe.log_error(
+				message=f"End Call Error:\nURL: {url}\nPayload: {payload}\nResponse: {response.text}",
+				title="End Call Error"
+			)
 
 	def send_template(self, to_number, template_name, components=None):
 		"""
