@@ -34,12 +34,13 @@ def verify_webhook():
 
 	if mode == 'subscribe' and token == settings.get_password('webhook_verify_token'):
 		# Return challenge as plain text, not JSON
-		frappe.response['type'] = 'page'
-		frappe.response['page_name'] = 'printview'
-		return challenge
+		frappe.local.response.http_status_code = 200
+		frappe.local.response.type = "text"
+		frappe.local.response.data = challenge
+		return
 	else:
-		frappe.response.http_status_code = 403
-		return "Forbidden"
+		frappe.local.response.http_status_code = 403
+		frappe.throw(_("Forbidden"))
 
 
 def process_webhook():
