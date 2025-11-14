@@ -33,9 +33,13 @@ def verify_webhook():
 	settings = frappe.get_single("WhatsApp Settings")
 
 	if mode == 'subscribe' and token == settings.get_password('webhook_verify_token'):
+		# Return challenge as plain text, not JSON
+		frappe.response['type'] = 'page'
+		frappe.response['page_name'] = 'printview'
 		return challenge
 	else:
-		frappe.throw(_("Webhook verification failed"), frappe.PermissionError)
+		frappe.response.http_status_code = 403
+		return "Forbidden"
 
 
 def process_webhook():

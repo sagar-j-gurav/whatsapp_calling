@@ -3,6 +3,7 @@
 
 frappe.ui.form.on('WhatsApp Settings', {
 	refresh: function(frm) {
+		// Test Janus Connection button
 		if (frm.doc.janus_http_url) {
 			frm.add_custom_button(__('Test Janus Connection'), function() {
 				frappe.call({
@@ -14,7 +15,98 @@ frappe.ui.form.on('WhatsApp Settings', {
 						}
 					}
 				});
-			});
+			}, __('Tests'));
 		}
+
+		// Test Webhook button
+		frm.add_custom_button(__('Test Webhook Verification'), function() {
+			test_webhook_verification(frm);
+		}, __('Tests'));
 	}
 });
+
+function test_webhook_verification(frm) {
+	// Check if verify token is set
+	if (!frm.doc.webhook_verify_token) {
+		frappe.msgprint({
+			title: __('Missing Verify Token'),
+			message: __('Please set a Webhook Verify Token first and save the document.'),
+			indicator: 'red'
+		});
+		return;
+	}
+
+	// Show the webhook URL
+	const webhook_url = frm.doc.webhook_url;
+
+	// Create test URL with parameters
+	const verify_token = frm.doc.webhook_verify_token;
+	const test_challenge = 'TEST_CHALLENGE_' + Math.floor(Math.random() * 1000000);
+	const test_url = `${webhook_url}?hub.mode=subscribe&hub.verify_token=${verify_token}&hub.challenge=${test_challenge}`;
+
+	// Show dialog with instructions
+	const d = new frappe.ui.Dialog({
+		title: __('Test Webhook Verification'),
+		fields: [
+			{
+				fieldtype: 'HTML',
+				fieldname: 'instructions',
+				options: `
+					<div style="padding: 15px;">
+						<h4>Webhook URL</h4>
+						<p><code style="background: #f5f5f5; padding: 8px; display: block; word-break: break-all;">${webhook_url}</code></p>
+
+						<h4 style="margin-top: 20px;">Verify Token</h4>
+						<p><code style="background: #f5f5f5; padding: 8px; display: block;">${verify_token || 'Not set'}</code></p>
+
+						<h4 style="margin-top: 20px;">Test Instructions</h4>
+						<ol>
+							<li>Copy the webhook URL above</li>
+							<li>Copy the verify token above</li>
+							<li>Go to your Meta App Settings → WhatsApp → Configuration</li>
+							<li>Paste the webhook URL in "Callback URL"</li>
+							<li>Paste the verify token in "Verify Token"</li>
+							<li>Click "Verify and Save"</li>
+						</ol>
+
+						<div style="background: #e8f5e9; padding: 12px; border-left: 4px solid #4caf50; margin-top: 20px;">
+							<strong>✓ Or test locally:</strong>
+							<p style="margin: 8px 0 0 0;">Click the button below to simulate the verification request.</p>
+						</div>
+					</div>
+				`
+			}
+		],
+		primary_action_label: __('Test Locally'),
+		primary_action: function() {
+			// Make a test request to the webhook
+			fetch(test_url)
+				.then(response => response.text())
+				.then(data => {
+					if (data === test_challenge) {
+						frappe.msgprint({
+							title: __('Webhook Test Successful'),
+							message: __('Webhook verification is working correctly! The challenge was returned successfully.'),
+							indicator: 'green'
+						});
+					} else {
+						frappe.msgprint({
+							title: __('Unexpected Response'),
+							message: __('Received: {0}<br>Expected: {1}', [data, test_challenge]),
+							indicator: 'orange'
+						});
+					}
+					d.hide();
+				})
+				.catch(error => {
+					frappe.msgprint({
+						title: __('Webhook Test Failed'),
+						message: __('Error: {0}', [error.message]),
+						indicator: 'red'
+					});
+				});
+		}
+	});
+
+	d.show();
+}
