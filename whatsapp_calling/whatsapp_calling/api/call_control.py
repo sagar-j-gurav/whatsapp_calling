@@ -179,7 +179,7 @@ def answer_call(call_id):
 		wa_number = frappe.get_doc("WhatsApp Number", call_doc.business_number)
 		wa_api = WhatsAppAPI(
 			wa_number.phone_number_id,
-			wa_number.get_password('access_token')
+			wa_number.get_access_token()
 		)
 
 		# Send pre_accept to WhatsApp (optional but recommended)
@@ -331,7 +331,7 @@ def initiate_call(to_number, lead=None, lead_name=None):
 		# Initialize WhatsApp API call
 		wa_api = WhatsAppAPI(
 			wa_number.phone_number_id,
-			wa_number.get_password('access_token')
+			wa_number.get_access_token()
 		)
 
 		call_response = wa_api.make_call(to_number)
