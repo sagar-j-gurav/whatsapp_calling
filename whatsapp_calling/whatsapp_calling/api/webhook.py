@@ -297,6 +297,31 @@ def handle_call_event(call_data, metadata, wa_profile_name=None):
 			call_doc.duration_seconds = int(duration)
 			print(f"  Duration: {duration} seconds")
 
+		# Notify browser to close the call popup
+		if call_doc.assigned_to:
+			print(f"Notifying {call_doc.assigned_to} that call ended")
+			frappe.publish_realtime(
+				event='call_status_update',
+				message={
+					'call_id': call_doc.call_id,
+					'status': 'Ended',
+					'duration': call_doc.duration_seconds
+				},
+				user=call_doc.assigned_to
+			)
+
+		# Cleanup Janus session if exists
+		if call_doc.janus_session_id and call_doc.janus_room_id:
+			print(f"Cleaning up Janus session {call_doc.janus_session_id}, room {call_doc.janus_room_id}")
+			try:
+				from whatsapp_calling.whatsapp_calling.api.janus_client import JanusClient
+				janus = JanusClient()
+				janus.destroy_room(call_doc.janus_session_id, call_doc.janus_room_id)
+				print("✓ Janus session cleaned up")
+			except Exception as e:
+				print(f"Warning: Failed to cleanup Janus: {str(e)}")
+
+
 	call_doc.save(ignore_permissions=True)
 	frappe.db.commit()
 	print(f"✓ Call record saved: {call_doc.name} (Status: {call_doc.status})")

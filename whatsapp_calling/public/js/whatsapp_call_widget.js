@@ -595,13 +595,32 @@ whatsapp_calling.CallWidget = class {
 	}
 
 	handle_status_update(data) {
-		if (data.call_id === this.call_id) {
+		console.log('Call status update received:', data);
+
+		// Handle incoming call status updates
+		if (data.status === 'Ended') {
+			// Hide the call overlay if it's showing
+			this.hide_call_overlay();
+
+			// Cleanup resources
+			this.cleanup();
+
+			// Show notification
+			if (data.duration) {
+				frappe.show_alert({
+					message: __('Call ended. Duration: {0} seconds', [data.duration]),
+					indicator: 'blue'
+				});
+			} else {
+				frappe.show_alert({
+					message: __('Call ended'),
+					indicator: 'blue'
+				});
+			}
+		} else if (data.call_id === this.call_id) {
 			if (data.status === 'Answered') {
 				this.call_status = 'active';
 				this.show_active_call_ui();
-			} else if (data.status === 'Ended') {
-				this.cleanup();
-				frappe.msgprint(__('Call ended'));
 			}
 		}
 	}
