@@ -84,11 +84,10 @@
   },
   {
    "fieldname": "lead",
-   "fieldtype": "Link",
-   "options": "Lead",
-   "label": "CRM Lead",
+   "fieldtype": "Data",
+   "label": "Lead Reference",
    "in_standard_filter": 1,
-   "description": "Linked CRM Lead"
+   "description": "Reference to CRM Lead or Contact"
   },
   {
    "fieldname": "contact_name",

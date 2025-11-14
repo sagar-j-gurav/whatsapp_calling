@@ -130,19 +130,28 @@ def handle_call_event(call_data, metadata):
 
 
 def find_lead_by_mobile(mobile_number):
-	"""Find CRM Lead by mobile number"""
-	# Clean number for comparison
-	clean_number = mobile_number.replace("+", "").replace("-", "").replace(" ", "")
+	"""Find CRM Lead by mobile number (only if Lead doctype exists)"""
+	try:
+		# Check if Lead doctype exists (for ERPNext integration)
+		if not frappe.db.exists("DocType", "Lead"):
+			return None
 
-	leads = frappe.get_all(
-		"Lead",
-		filters={
-			"mobile_no": ["like", f"%{clean_number[-10:]}%"]  # Match last 10 digits
-		},
-		limit=1
-	)
+		# Clean number for comparison
+		clean_number = mobile_number.replace("+", "").replace("-", "").replace(" ", "")
 
-	return leads[0].name if leads else None
+		leads = frappe.get_all(
+			"Lead",
+			filters={
+				"mobile_no": ["like", f"%{clean_number[-10:]}%"]  # Match last 10 digits
+			},
+			limit=1
+		)
+
+		return leads[0].name if leads else None
+	except Exception as e:
+		# If Lead doctype doesn't exist or any other error, just return None
+		frappe.log_error(message=str(e), title="Lead Lookup Failed")
+		return None
 
 
 def notify_agents(call_doc):
