@@ -116,7 +116,8 @@ def process_webhook():
 def handle_call_event(call_data, metadata):
 	"""Process call webhook event"""
 	call_id = call_data.get("id")
-	status = call_data.get("status")  # ringing, answered, ended
+	event = call_data.get("event")  # connect, terminate
+	status = call_data.get("status")  # COMPLETED, etc
 	from_number = call_data.get("from")
 	to_number = metadata.get("display_phone_number")
 	timestamp = call_data.get("timestamp")
@@ -124,6 +125,7 @@ def handle_call_event(call_data, metadata):
 	print("-" * 80)
 	print("HANDLING CALL EVENT")
 	print(f"Call ID: {call_id}")
+	print(f"Event: {event}")
 	print(f"Status: {status}")
 	print(f"From: {from_number}")
 	print(f"To: {to_number}")
@@ -191,22 +193,31 @@ def handle_call_event(call_data, metadata):
 			)
 			return
 
-	# Update status
-	if status == "ringing" and call_doc.direction == "Inbound":
-		print("Status: RINGING - Notifying agents...")
+	# Update status based on event type
+	if event == "connect":
+		print("Event: CONNECT - Call initiated, notifying agents...")
+		if call_doc.status != "Ringing":
+			call_doc.status = "Ringing"
 		# Notify available agents
 		notify_agents(call_doc)
 
-	elif status == "answered":
-		print("Status: ANSWERED - Updating call record...")
+	elif event == "answer":
+		print("Event: ANSWER - Call answered...")
 		call_doc.status = "Answered"
 		call_doc.answered_at = frappe.utils.now()
 
-	elif status == "ended":
-		print("Status: ENDED - Finalizing call record...")
+	elif event == "terminate":
+		print("Event: TERMINATE - Call ended...")
 		call_doc.status = "Ended"
 		call_doc.ended_at = frappe.utils.now()
-		call_doc.validate()  # Calculate duration and cost
+		# Calculate duration
+		if call_doc.initiated_at and call_doc.ended_at:
+			from frappe.utils import get_datetime
+			initiated = get_datetime(call_doc.initiated_at)
+			ended = get_datetime(call_doc.ended_at)
+			duration = (ended - initiated).total_seconds()
+			call_doc.duration_seconds = int(duration)
+			print(f"  Duration: {duration} seconds")
 
 	call_doc.save(ignore_permissions=True)
 	frappe.db.commit()
