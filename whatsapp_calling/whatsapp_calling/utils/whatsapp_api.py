@@ -4,6 +4,7 @@
 import frappe
 import requests
 from frappe import _
+from urllib.parse import quote
 
 
 class WhatsAppAPI:
@@ -50,7 +51,9 @@ class WhatsAppAPI:
 			call_id: WhatsApp call ID
 			janus_config: Dict with janus_url and room_id
 		"""
-		url = f"{self.BASE_URL}/{self.phone_number_id}/calls/{call_id}/answer"
+		# URL-encode call_id to handle special characters
+		encoded_call_id = quote(call_id, safe='')
+		url = f"{self.BASE_URL}/{self.phone_number_id}/calls/{encoded_call_id}/answer"
 
 		payload = {
 			"media_server": {
@@ -63,14 +66,22 @@ class WhatsAppAPI:
 		response = requests.post(url, json=payload, headers=self.headers, timeout=10)
 
 		if response.status_code != 200:
-			error_msg = response.json().get("error", {}).get("message", "Unknown error")
+			error_data = response.json().get("error", {})
+			error_msg = error_data.get("message", "Unknown error")
+			error_code = error_data.get("code", "N/A")
+			frappe.log_error(
+				message=f"WhatsApp API Error:\nURL: {url}\nStatus: {response.status_code}\nError Code: {error_code}\nMessage: {error_msg}\nResponse: {response.text}",
+				title="Answer Call API Error"
+			)
 			raise Exception(f"Failed to answer call: {error_msg}")
 
 		return response.json()
 
 	def end_call(self, call_id):
 		"""End active call"""
-		url = f"{self.BASE_URL}/{self.phone_number_id}/calls/{call_id}/end"
+		# URL-encode call_id to handle special characters
+		encoded_call_id = quote(call_id, safe='')
+		url = f"{self.BASE_URL}/{self.phone_number_id}/calls/{encoded_call_id}/end"
 
 		response = requests.post(url, headers=self.headers, timeout=10)
 

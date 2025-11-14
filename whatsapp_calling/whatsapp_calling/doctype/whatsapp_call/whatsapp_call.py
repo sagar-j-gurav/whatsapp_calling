@@ -59,7 +59,12 @@ class WhatsAppCall(Document):
 				self.update_business_number_usage()
 
 	def update_call_permission_usage(self):
-		"""Increment call counter in permission record"""
+		"""Increment call counter in permission record (OUTBOUND CALLS ONLY)"""
+		# Call Permission is ONLY for outbound/business-initiated calls
+		# Incoming calls from users do NOT require permission
+		if self.direction != "Outbound":
+			return
+
 		try:
 			permission = frappe.get_doc("Call Permission", {
 				"customer_number": self.customer_number,
