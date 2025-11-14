@@ -46,16 +46,7 @@ whatsapp_calling.CallWidget = class {
 		});
 
 		console.log('✓ Realtime listeners registered successfully');
-
-		// Test the realtime system
-		console.log('Testing if realtime events work...');
-		setTimeout(() => {
-			console.log('Emitting test event to self...');
-			frappe.realtime.on('test_event', (data) => {
-				console.log('✓ Test event received! Realtime is working.', data);
-			});
-			frappe.publish_realtime('test_event', { test: true });
-		}, 1000);
+		console.log('Widget is ready to receive incoming call events');
 	}
 
 	async initiate_call_from_lead(lead_name, mobile_number, lead_display_name) {
