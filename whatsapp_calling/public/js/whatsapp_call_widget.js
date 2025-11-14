@@ -182,6 +182,22 @@ whatsapp_calling.CallWidget = class {
 		// Store call data
 		this.current_call_data = call_data;
 
+		// Format display name: Lead Name (WhatsApp Profile) or just WhatsApp Profile
+		let displayName = 'Unknown';
+		if (call_data.lead_name && call_data.wa_profile_name) {
+			// Both available: "Lead Name (WhatsApp Profile)"
+			displayName = `${call_data.lead_name} <span style="opacity: 0.7; font-size: 0.85em;">(${call_data.wa_profile_name})</span>`;
+		} else if (call_data.lead_name) {
+			// Only lead name
+			displayName = call_data.lead_name;
+		} else if (call_data.wa_profile_name) {
+			// Only WhatsApp profile name
+			displayName = call_data.wa_profile_name;
+		} else if (call_data.customer_name && call_data.customer_name !== 'Unknown') {
+			// Fallback to customer_name
+			displayName = call_data.customer_name;
+		}
+
 		// Create WhatsApp-style overlay
 		const overlay = $(`
 			<div class="whatsapp-call-overlay" id="wa-call-overlay">
@@ -208,7 +224,7 @@ whatsapp_calling.CallWidget = class {
 							</svg>
 						</div>
 
-						<div class="wa-caller-name">${call_data.customer_name || 'Unknown'}</div>
+						<div class="wa-caller-name">${displayName}</div>
 						<div class="wa-caller-number">${call_data.customer_number || ''}</div>
 
 						${call_data.lead ? `
@@ -525,34 +541,29 @@ whatsapp_calling.CallWidget = class {
 		try {
 			// Use browser's built-in beep or oscillator as ringtone
 			const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-			const oscillator = audioContext.createOscillator();
-			const gainNode = audioContext.createGain();
 
-			oscillator.connect(gainNode);
-			gainNode.connect(audioContext.destination);
-
-			oscillator.frequency.value = 800; // Hz
-			oscillator.type = 'sine';
-			gainNode.gain.value = 0.3;
-
-			// Create beeping pattern
-			let isPlaying = true;
+			// Create beeping pattern - create new oscillator each time
 			this.ringtone_interval = setInterval(() => {
-				if (isPlaying) {
+				try {
+					const oscillator = audioContext.createOscillator();
+					const gainNode = audioContext.createGain();
+
+					oscillator.connect(gainNode);
+					gainNode.connect(audioContext.destination);
+
+					oscillator.frequency.value = 800; // Hz
+					oscillator.type = 'sine';
+					gainNode.gain.value = 0.3;
+
 					oscillator.start(0);
-					setTimeout(() => {
-						try {
-							oscillator.stop();
-						} catch (e) {
-							// Oscillator already stopped
-						}
-					}, 200);
+					oscillator.stop(audioContext.currentTime + 0.2); // 200ms beep
+				} catch (e) {
+					console.log('Beep creation failed:', e);
 				}
-			}, 1000);
+			}, 1000); // Beep every second
 
 			// Store context for cleanup
 			this.ringtone_context = audioContext;
-			this.ringtone_oscillator = oscillator;
 
 			console.log('Playing ringtone (oscillator)');
 		} catch (e) {

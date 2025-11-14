@@ -88,7 +88,15 @@ def process_webhook():
 						title="WhatsApp Call Event Debug"
 					)
 
-					handle_call_event(value["calls"][0], value.get("metadata", {}))
+					# Extract WhatsApp profile name from contacts
+					contacts = value.get("contacts", [])
+					wa_profile_name = None
+					if contacts and len(contacts) > 0:
+						profile = contacts[0].get("profile", {})
+						wa_profile_name = profile.get("name")
+						print(f"WhatsApp Profile Name: {wa_profile_name}")
+
+					handle_call_event(value["calls"][0], value.get("metadata", {}), wa_profile_name)
 
 				# Handle message events (for unified thread)
 				if "messages" in value:
@@ -113,7 +121,7 @@ def process_webhook():
 		return {"status": "error"}
 
 
-def handle_call_event(call_data, metadata):
+def handle_call_event(call_data, metadata, wa_profile_name=None):
 	"""Process call webhook event"""
 	call_id = call_data.get("id")
 	event = call_data.get("event")  # connect, terminate
@@ -179,10 +187,19 @@ def handle_call_event(call_data, metadata):
 
 		# Try to find linked lead
 		lead = find_lead_by_mobile(from_number)
+		lead_name = None
 		if lead:
 			print(f"Found linked CRM Lead: {lead}")
+			# Get lead name
+			lead_doc = frappe.get_doc("CRM Lead", lead)
+			lead_name = lead_doc.lead_name or lead_doc.first_name
+			print(f"Lead name: {lead_name}")
 		else:
 			print("No linked CRM Lead found")
+
+		# Determine contact name - prefer lead name, fallback to WhatsApp profile name
+		contact_name = lead_name or wa_profile_name
+		print(f"Contact name for call: {contact_name}")
 
 		try:
 			call_doc = frappe.get_doc({
@@ -194,7 +211,8 @@ def handle_call_event(call_data, metadata):
 				"direction": "Inbound",
 				"status": "Ringing",
 				"initiated_at": frappe.utils.now(),
-				"lead": lead
+				"lead": lead,
+				"contact_name": contact_name
 			})
 			call_doc.insert(ignore_permissions=True)
 			print(f"✓ Created call record: {call_doc.name}")
@@ -219,8 +237,13 @@ def handle_call_event(call_data, metadata):
 		print("Event: CONNECT - Call initiated, notifying agents...")
 		if call_doc.status != "Ringing":
 			call_doc.status = "Ringing"
-		# Notify available agents
-		notify_agents(call_doc)
+		# Notify available agents - pass lead_name and wa_profile_name for display
+		# These variables are only available when creating new call records
+		notify_agents(
+			call_doc,
+			lead_name=locals().get('lead_name'),
+			wa_profile_name=locals().get('wa_profile_name')
+		)
 
 	elif event == "answer":
 		print("Event: ANSWER - Call answered...")
@@ -272,9 +295,17 @@ def find_lead_by_mobile(mobile_number):
 		return None
 
 
-def notify_agents(call_doc):
+def notify_agents(call_doc, lead_name=None, wa_profile_name=None):
 	"""Send real-time notification to agents"""
 	print("Notifying agents of incoming call...")
+
+	# If lead_name not provided, try to get it from the lead
+	if not lead_name and call_doc.lead:
+		try:
+			lead_doc = frappe.get_doc("CRM Lead", call_doc.lead)
+			lead_name = lead_doc.lead_name or lead_doc.first_name
+		except:
+			pass
 
 	# Find users with access to this company
 	users = frappe.get_all(
@@ -300,7 +331,9 @@ def notify_agents(call_doc):
 				'call_name': call_doc.name,
 				'customer_number': call_doc.customer_number,
 				'customer_name': call_doc.contact_name or "Unknown",
-				'lead': call_doc.lead
+				'lead': call_doc.lead,
+				'lead_name': lead_name,  # Lead name from CRM
+				'wa_profile_name': wa_profile_name  # WhatsApp profile name
 			},
 			user=user
 		)
