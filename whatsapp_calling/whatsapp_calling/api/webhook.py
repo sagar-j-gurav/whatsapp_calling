@@ -58,38 +58,58 @@ def process_webhook():
 	try:
 		data = json.loads(frappe.request.data)
 
-		# DEBUG: Log raw webhook data
-		frappe.logger().info("=" * 80)
-		frappe.logger().info("WEBHOOK RECEIVED")
-		frappe.logger().info(f"Raw data: {json.dumps(data, indent=2)}")
-		frappe.logger().info("=" * 80)
+		# DEBUG: Log to Error Log so we can see it
+		frappe.log_error(
+			message=f"WEBHOOK RECEIVED:\n{json.dumps(data, indent=2)}",
+			title="WhatsApp Webhook Debug"
+		)
+
+		# Also print to console
+		print("=" * 80)
+		print("WEBHOOK RECEIVED")
+		print(f"Raw data: {json.dumps(data, indent=2)}")
+		print("=" * 80)
 
 		for entry in data.get("entry", []):
-			frappe.logger().info(f"Processing entry: {entry.get('id')}")
+			print(f"Processing entry: {entry.get('id')}")
 
 			for change in entry.get("changes", []):
 				value = change.get("value", {})
-				frappe.logger().info(f"Change field: {change.get('field')}")
+				print(f"Change field: {change.get('field')}")
 
 				# Handle call events
 				if "calls" in value:
-					frappe.logger().info("CALL EVENT DETECTED")
-					frappe.logger().info(f"Call data: {json.dumps(value['calls'][0], indent=2)}")
-					frappe.logger().info(f"Metadata: {json.dumps(value.get('metadata', {}), indent=2)}")
+					print("CALL EVENT DETECTED")
+					print(f"Call data: {json.dumps(value['calls'][0], indent=2)}")
+					print(f"Metadata: {json.dumps(value.get('metadata', {}), indent=2)}")
+
+					frappe.log_error(
+						message=f"CALL EVENT:\nCall: {json.dumps(value['calls'][0], indent=2)}\nMetadata: {json.dumps(value.get('metadata', {}), indent=2)}",
+						title="WhatsApp Call Event Debug"
+					)
+
 					handle_call_event(value["calls"][0], value.get("metadata", {}))
 
 				# Handle message events (for unified thread)
 				if "messages" in value:
-					frappe.logger().info("MESSAGE EVENT DETECTED")
+					print("MESSAGE EVENT DETECTED")
 					handle_message_event(value["messages"][0])
 
-		frappe.logger().info("Webhook processing completed successfully")
+		print("Webhook processing completed successfully")
+		frappe.log_error(
+			message="Webhook processing completed successfully",
+			title="WhatsApp Webhook Success"
+		)
 		return {"status": "success"}
 
 	except Exception as e:
-		frappe.logger().error(f"WEBHOOK PROCESSING ERROR: {str(e)}")
-		frappe.logger().exception(e)
-		frappe.log_error(message=str(e), title="Webhook Processing Error")
+		print(f"WEBHOOK PROCESSING ERROR: {str(e)}")
+		import traceback
+		traceback.print_exc()
+		frappe.log_error(
+			message=f"WEBHOOK ERROR:\n{str(e)}\n\n{traceback.format_exc()}",
+			title="WhatsApp Webhook Error"
+		)
 		return {"status": "error"}
 
 
@@ -101,76 +121,97 @@ def handle_call_event(call_data, metadata):
 	to_number = metadata.get("display_phone_number")
 	timestamp = call_data.get("timestamp")
 
-	frappe.logger().info("-" * 80)
-	frappe.logger().info("HANDLING CALL EVENT")
-	frappe.logger().info(f"Call ID: {call_id}")
-	frappe.logger().info(f"Status: {status}")
-	frappe.logger().info(f"From: {from_number}")
-	frappe.logger().info(f"To: {to_number}")
-	frappe.logger().info(f"Timestamp: {timestamp}")
-	frappe.logger().info("-" * 80)
+	print("-" * 80)
+	print("HANDLING CALL EVENT")
+	print(f"Call ID: {call_id}")
+	print(f"Status: {status}")
+	print(f"From: {from_number}")
+	print(f"To: {to_number}")
+	print(f"Timestamp: {timestamp}")
+	print("-" * 80)
 
 	# Get or create call record
 	existing = frappe.db.get_value("WhatsApp Call", {"call_id": call_id}, "name")
 
 	if existing:
-		frappe.logger().info(f"Found existing call record: {existing}")
+		print(f"Found existing call record: {existing}")
 		call_doc = frappe.get_doc("WhatsApp Call", existing)
 	else:
-		frappe.logger().info("Creating new call record...")
+		print("Creating new call record...")
 
 		# Get WhatsApp Number details
 		try:
 			wa_number = frappe.get_doc("WhatsApp Number", {"phone_number": to_number})
-			frappe.logger().info(f"Found WhatsApp Number: {wa_number.name}")
+			print(f"Found WhatsApp Number: {wa_number.name}")
 		except Exception as e:
-			frappe.logger().error(f"ERROR: WhatsApp Number not found for {to_number}")
-			frappe.logger().error(f"Error details: {str(e)}")
-			frappe.log_error(message=f"WhatsApp Number not found: {to_number}\n{str(e)}", title="Call Event Error")
+			error_msg = f"ERROR: WhatsApp Number not found for {to_number}\nError: {str(e)}"
+			print(error_msg)
+			import traceback
+			traceback.print_exc()
+			frappe.log_error(
+				message=f"{error_msg}\n\n{traceback.format_exc()}",
+				title="WhatsApp Number Not Found"
+			)
 			return
 
 		# Try to find linked lead
 		lead = find_lead_by_mobile(from_number)
 		if lead:
-			frappe.logger().info(f"Found linked CRM Lead: {lead}")
+			print(f"Found linked CRM Lead: {lead}")
 		else:
-			frappe.logger().info("No linked CRM Lead found")
+			print("No linked CRM Lead found")
 
-		call_doc = frappe.get_doc({
-			"doctype": "WhatsApp Call",
-			"call_id": call_id,
-			"customer_number": from_number,
-			"business_number": wa_number.name,
-			"company": wa_number.company,
-			"direction": "Inbound",
-			"status": "Ringing",
-			"initiated_at": frappe.utils.now(),
-			"lead": lead
-		})
-		call_doc.insert(ignore_permissions=True)
-		frappe.logger().info(f"✓ Created call record: {call_doc.name}")
+		try:
+			call_doc = frappe.get_doc({
+				"doctype": "WhatsApp Call",
+				"call_id": call_id,
+				"customer_number": from_number,
+				"business_number": wa_number.name,
+				"company": wa_number.company,
+				"direction": "Inbound",
+				"status": "Ringing",
+				"initiated_at": frappe.utils.now(),
+				"lead": lead
+			})
+			call_doc.insert(ignore_permissions=True)
+			print(f"✓ Created call record: {call_doc.name}")
+
+			frappe.log_error(
+				message=f"Call record created successfully:\nID: {call_doc.name}\nCall ID: {call_id}\nFrom: {from_number}\nTo: {to_number}",
+				title="WhatsApp Call Created"
+			)
+		except Exception as e:
+			error_msg = f"ERROR creating call record: {str(e)}"
+			print(error_msg)
+			import traceback
+			traceback.print_exc()
+			frappe.log_error(
+				message=f"{error_msg}\n\n{traceback.format_exc()}\n\nData:\nCall ID: {call_id}\nFrom: {from_number}\nTo: {to_number}",
+				title="Call Record Creation Failed"
+			)
+			return
 
 	# Update status
 	if status == "ringing" and call_doc.direction == "Inbound":
-		frappe.logger().info("Status: RINGING - Notifying agents...")
+		print("Status: RINGING - Notifying agents...")
 		# Notify available agents
 		notify_agents(call_doc)
 
 	elif status == "answered":
-		frappe.logger().info("Status: ANSWERED - Updating call record...")
+		print("Status: ANSWERED - Updating call record...")
 		call_doc.status = "Answered"
 		call_doc.answered_at = frappe.utils.now()
 
 	elif status == "ended":
-		frappe.logger().info("Status: ENDED - Finalizing call record...")
+		print("Status: ENDED - Finalizing call record...")
 		call_doc.status = "Ended"
 		call_doc.ended_at = frappe.utils.now()
 		call_doc.validate()  # Calculate duration and cost
 
 	call_doc.save(ignore_permissions=True)
 	frappe.db.commit()
-	frappe.logger().info(f"✓ Call record saved: {call_doc.name} (Status: {call_doc.status})")
-	frappe.logger().info("=" * 80)
+	print(f"✓ Call record saved: {call_doc.name} (Status: {call_doc.status})")
+	print("=" * 80)
 
 
 def find_lead_by_mobile(mobile_number):
@@ -201,7 +242,7 @@ def find_lead_by_mobile(mobile_number):
 
 def notify_agents(call_doc):
 	"""Send real-time notification to agents"""
-	frappe.logger().info("Notifying agents of incoming call...")
+	print("Notifying agents of incoming call...")
 
 	# Find users with access to this company
 	users = frappe.get_all(
@@ -213,7 +254,7 @@ def notify_agents(call_doc):
 		pluck="name"
 	)
 
-	frappe.logger().info(f"Found {len(users)} system users to notify")
+	print(f"Found {len(users)} system users to notify")
 
 	notification_count = 0
 	for user in users:
@@ -232,9 +273,9 @@ def notify_agents(call_doc):
 			user=user
 		)
 		notification_count += 1
-		frappe.logger().info(f"  → Sent notification to user: {user}")
+		print(f"  → Sent notification to user: {user}")
 
-	frappe.logger().info(f"✓ Sent {notification_count} real-time notifications")
+	print(f"✓ Sent {notification_count} real-time notifications")
 
 
 def handle_message_event(message_data):
