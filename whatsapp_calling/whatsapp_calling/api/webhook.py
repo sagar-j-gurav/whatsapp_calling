@@ -142,11 +142,32 @@ def handle_call_event(call_data, metadata):
 		print("Creating new call record...")
 
 		# Get WhatsApp Number details
+		# Normalize phone number - webhook sends without +, but we store with +
 		try:
-			wa_number = frappe.get_doc("WhatsApp Number", {"phone_number": to_number})
+			# First try exact match
+			wa_number = frappe.db.get_value(
+				"WhatsApp Number",
+				{"phone_number": to_number},
+				["name"],
+				as_dict=True
+			)
+
+			# If not found, try with + prefix
+			if not wa_number:
+				wa_number = frappe.db.get_value(
+					"WhatsApp Number",
+					{"phone_number": f"+{to_number}"},
+					["name"],
+					as_dict=True
+				)
+
+			if not wa_number:
+				raise frappe.exceptions.DoesNotExistError(f"WhatsApp Number not found for {to_number} or +{to_number}")
+
+			wa_number = frappe.get_doc("WhatsApp Number", wa_number.name)
 			print(f"Found WhatsApp Number: {wa_number.name}")
 		except Exception as e:
-			error_msg = f"ERROR: WhatsApp Number not found for {to_number}\nError: {str(e)}"
+			error_msg = f"ERROR: WhatsApp Number not found for {to_number} or +{to_number}\nError: {str(e)}"
 			print(error_msg)
 			import traceback
 			traceback.print_exc()
