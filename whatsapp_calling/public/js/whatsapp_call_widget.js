@@ -168,33 +168,99 @@ whatsapp_calling.CallWidget = class {
 		// Play ringtone
 		this.play_ringtone();
 
-		const dialog = new frappe.ui.Dialog({
-			title: __('Incoming WhatsApp Call'),
-			fields: [{
-				fieldtype: 'HTML',
-				fieldname: 'incoming_html',
-				options: `
-					<div style="text-align: center; padding: 30px;" class="incoming-call">
-						<div style="font-size: 64px; margin-bottom: 20px;">📱</div>
-						<h2>${call_data.customer_name}</h2>
-						<p style="color: #666; font-size: 16px;">${call_data.customer_number}</p>
+		// Store call data
+		this.current_call_data = call_data;
+
+		// Create WhatsApp-style overlay
+		const overlay = $(`
+			<div class="whatsapp-call-overlay" id="wa-call-overlay">
+				<div class="whatsapp-call-card">
+					<!-- Header -->
+					<div class="wa-call-header">
+						<div class="wa-call-status">WhatsApp Voice Call</div>
 					</div>
-				`
-			}],
-			primary_action_label: __('Answer'),
-			primary_action: () => {
-				this.stop_ringtone();
-				this.answer_incoming_call(call_data.call_id);
-				dialog.hide();
-			},
-			secondary_action_label: __('Decline'),
-			secondary_action: () => {
-				this.stop_ringtone();
-				dialog.hide();
-			}
+
+					<!-- Caller Info -->
+					<div class="wa-call-content">
+						<div class="wa-caller-avatar">
+							<svg width="80" height="80" viewBox="0 0 80 80">
+								<circle cx="40" cy="40" r="40" fill="#25D366"/>
+								<path d="M40 20c-11.046 0-20 8.954-20 20s8.954 20 20 20 20-8.954 20-20-8.954-20-20-20zm0 6c3.314 0 6 2.686 6 6s-2.686 6-6 6-6-2.686-6-6 2.686-6 6-6zm0 28c-5 0-9.42-2.558-12-6.438 0.06-3.98 8-6.162 12-6.162s11.94 2.182 12 6.162c-2.58 3.88-7 6.438-12 6.438z" fill="white"/>
+							</svg>
+						</div>
+
+						<div class="wa-caller-name">${call_data.customer_name || 'Unknown'}</div>
+						<div class="wa-caller-number">${call_data.customer_number || ''}</div>
+
+						${call_data.lead ? `
+							<a href="/app/crm-lead/${call_data.lead}" target="_blank" class="wa-lead-link">
+								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+									<circle cx="12" cy="7" r="4"></circle>
+								</svg>
+								View Lead Details
+							</a>
+						` : ''}
+
+						<div class="wa-call-ringing">Incoming...</div>
+					</div>
+
+					<!-- Action Buttons -->
+					<div class="wa-call-actions">
+						<button class="wa-btn wa-btn-decline" id="wa-decline-btn">
+							<svg width="28" height="28" viewBox="0 0 24 24" fill="white">
+								<path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.68-1.36-2.66-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
+							</svg>
+							<span>Decline</span>
+						</button>
+
+						<button class="wa-btn wa-btn-answer" id="wa-answer-btn">
+							<svg width="28" height="28" viewBox="0 0 24 24" fill="white">
+								<path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/>
+							</svg>
+							<span>Answer</span>
+						</button>
+					</div>
+				</div>
+			</div>
+		`);
+
+		// Append to body
+		$('body').append(overlay);
+
+		// Trigger animation
+		setTimeout(() => {
+			overlay.addClass('show');
+		}, 10);
+
+		// Bind actions
+		$('#wa-decline-btn').on('click', () => {
+			this.stop_ringtone();
+			this.decline_call(call_data.call_id);
+			this.hide_call_overlay();
 		});
 
-		dialog.show();
+		$('#wa-answer-btn').on('click', () => {
+			this.stop_ringtone();
+			this.answer_incoming_call(call_data.call_id);
+			this.hide_call_overlay();
+		});
+	}
+
+	hide_call_overlay() {
+		const overlay = $('#wa-call-overlay');
+		overlay.removeClass('show');
+		setTimeout(() => {
+			overlay.remove();
+		}, 300);
+	}
+
+	decline_call(call_id) {
+		// Call backend to decline/reject the call
+		frappe.call({
+			method: 'whatsapp_calling.whatsapp_calling.api.call_control.end_call',
+			args: { call_id: call_id }
+		});
 	}
 
 	async answer_incoming_call(call_id) {
