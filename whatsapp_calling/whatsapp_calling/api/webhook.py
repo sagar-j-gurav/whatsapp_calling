@@ -151,9 +151,21 @@ def handle_call_event(call_data, metadata, wa_profile_name=None):
 	# Get or create call record
 	existing = frappe.db.get_value("WhatsApp Call", {"call_id": call_id}, "name")
 
+	# Initialize lead_name for use later
+	lead_name = None
+
 	if existing:
 		print(f"Found existing call record: {existing}")
 		call_doc = frappe.get_doc("WhatsApp Call", existing)
+
+		# Extract lead name from existing call record
+		if call_doc.lead:
+			try:
+				lead_doc = frappe.get_doc("CRM Lead", call_doc.lead)
+				lead_name = lead_doc.lead_name or lead_doc.first_name
+				print(f"Existing call - Lead name: {lead_name}")
+			except:
+				pass
 	else:
 		print("Creating new call record...")
 
@@ -252,12 +264,12 @@ def handle_call_event(call_data, metadata, wa_profile_name=None):
 		print("Event: CONNECT - Call initiated, notifying agents...")
 		if call_doc.status != "Ringing":
 			call_doc.status = "Ringing"
-		# Notify available agents - pass lead_name and wa_profile_name for display
-		# These variables are only available when creating new call records
+		# Notify available agents with lead_name and wa_profile_name for display
+		print(f"Notifying agents - lead_name: {lead_name}, wa_profile_name: {wa_profile_name}")
 		notify_agents(
 			call_doc,
-			lead_name=locals().get('lead_name'),
-			wa_profile_name=locals().get('wa_profile_name')
+			lead_name=lead_name,
+			wa_profile_name=wa_profile_name
 		)
 
 	elif event == "answer":
@@ -312,13 +324,18 @@ def find_lead_by_mobile(mobile_number):
 
 def notify_agents(call_doc, lead_name=None, wa_profile_name=None):
 	"""Send real-time notification to agents"""
-	print("Notifying agents of incoming call...")
+	print("=" * 80)
+	print("NOTIFY_AGENTS - Starting...")
+	print(f"Call Doc: {call_doc.name}")
+	print(f"Lead Name (passed): {lead_name}")
+	print(f"WA Profile Name (passed): {wa_profile_name}")
 
 	# If lead_name not provided, try to get it from the lead
 	if not lead_name and call_doc.lead:
 		try:
 			lead_doc = frappe.get_doc("CRM Lead", call_doc.lead)
 			lead_name = lead_doc.lead_name or lead_doc.first_name
+			print(f"Lead Name (extracted from call_doc.lead): {lead_name}")
 		except:
 			pass
 
@@ -332,30 +349,36 @@ def notify_agents(call_doc, lead_name=None, wa_profile_name=None):
 		pluck="name"
 	)
 
-	print(f"Found {len(users)} system users to notify")
+	print(f"Found {len(users)} system users to notify: {users}")
+
+	# Prepare message data
+	message_data = {
+		'call_id': call_doc.call_id,
+		'call_name': call_doc.name,
+		'customer_number': call_doc.customer_number,
+		'customer_name': call_doc.contact_name or "Unknown",
+		'lead': call_doc.lead,
+		'lead_name': lead_name,  # Lead name from CRM
+		'wa_profile_name': wa_profile_name  # WhatsApp profile name
+	}
+	print(f"Message data to send: {message_data}")
 
 	notification_count = 0
 	for user in users:
 		# Check if user has permission for this company
 		# TODO: Implement proper permission check
 
+		print(f"Publishing realtime event 'incoming_whatsapp_call' to user: {user}")
 		frappe.publish_realtime(
 			event='incoming_whatsapp_call',
-			message={
-				'call_id': call_doc.call_id,
-				'call_name': call_doc.name,
-				'customer_number': call_doc.customer_number,
-				'customer_name': call_doc.contact_name or "Unknown",
-				'lead': call_doc.lead,
-				'lead_name': lead_name,  # Lead name from CRM
-				'wa_profile_name': wa_profile_name  # WhatsApp profile name
-			},
+			message=message_data,
 			user=user
 		)
 		notification_count += 1
-		print(f"  → Sent notification to user: {user}")
+		print(f"  ✓ Sent notification to user: {user}")
 
 	print(f"✓ Sent {notification_count} real-time notifications")
+	print("=" * 80)
 
 
 def handle_message_event(message_data):
