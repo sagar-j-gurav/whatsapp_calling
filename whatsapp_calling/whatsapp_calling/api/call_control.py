@@ -216,3 +216,87 @@ def get_company_whatsapp_number(company):
 	if numbers:
 		return frappe.get_doc("WhatsApp Number", numbers[0].name)
 	return None
+
+
+@frappe.whitelist()
+def initiate_call(to_number, lead=None, lead_name=None):
+	"""
+	Initiate outbound WhatsApp call from CRM Lead
+
+	Args:
+		to_number: Customer's mobile number
+		lead: CRM Lead ID (optional)
+		lead_name: Lead's name for display (optional)
+
+	Returns:
+		dict with success status and call details
+	"""
+	try:
+		# Validate phone number
+		if not to_number:
+			return {"success": False, "error": "Mobile number is required"}
+
+		# Get first active WhatsApp number
+		# TODO: Allow selection of which business number to use
+		wa_numbers = frappe.get_all(
+			"WhatsApp Number",
+			filters={"status": "Active"},
+			limit=1
+		)
+
+		if not wa_numbers:
+			return {"success": False, "error": "No active WhatsApp number configured"}
+
+		wa_number = frappe.get_doc("WhatsApp Number", wa_numbers[0].name)
+
+		# Check call permission
+		permission_check = check_call_permission(to_number, wa_number.name)
+		if not permission_check["can_call"]:
+			return {"success": False, "error": permission_check["reason"]}
+
+		# Create Janus room first
+		janus = JanusClient()
+		room_config = janus.setup_call_room()
+
+		# Initialize WhatsApp API call
+		wa_api = WhatsAppAPI(
+			wa_number.phone_number_id,
+			wa_number.get_password('access_token')
+		)
+
+		call_response = wa_api.make_call(to_number)
+
+		# Create call record
+		call_doc = frappe.get_doc({
+			"doctype": "WhatsApp Call",
+			"call_id": call_response["id"],
+			"customer_number": to_number,
+			"business_number": wa_number.name,
+			"company": wa_number.company,
+			"lead": lead,
+			"contact_name": lead_name,
+			"direction": "Outbound",
+			"status": "Initiated",
+			"initiated_at": frappe.utils.now(),
+			"assigned_to": frappe.session.user,
+			"janus_room_id": room_config["room_id"],
+			"janus_session_id": room_config["session_id"]
+		})
+		call_doc.insert(ignore_permissions=True)
+		frappe.db.commit()
+
+		return {
+			"success": True,
+			"call_id": call_response["id"],
+			"call_name": call_doc.name,
+			"webrtc_config": {
+				"janus_url": frappe.get_single("WhatsApp Settings").janus_ws_url,
+				"room_id": room_config["room_id"],
+				"session_id": room_config["session_id"],
+				"handle_id": room_config.get("handle_id")
+			}
+		}
+
+	except Exception as e:
+		frappe.log_error(message=str(e), title="Initiate Call Error")
+		return {"success": False, "error": str(e)}
