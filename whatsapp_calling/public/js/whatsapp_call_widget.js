@@ -104,13 +104,12 @@ whatsapp_calling.CallWidget = class {
 			console.log(`Janus HTTP URL: ${janus_http_url}`);
 			console.log(`Room ID to join: ${room_id}`);
 
-			// Create peer connection
-			this.peer_connection = new RTCPeerConnection({
-				iceServers: [
-					{ urls: 'stun:stun.l.google.com:19302' },
-					{ urls: 'stun:stun1.l.google.com:19302' }
-				]
-			});
+			// Get ICE servers configuration from settings (production-grade, no hardcoded values)
+			const ice_config = await this.get_ice_servers();
+			console.log('ICE Configuration:', ice_config);
+
+			// Create peer connection with dynamic ICE configuration
+			this.peer_connection = new RTCPeerConnection(ice_config);
 
 			// Add local audio track
 			this.local_stream.getTracks().forEach(track => {
@@ -180,6 +179,42 @@ whatsapp_calling.CallWidget = class {
 			}
 		});
 		return response.message.janus_http_url;
+	}
+
+	async get_ice_servers() {
+		/**
+		 * Get dynamic ICE servers configuration from WhatsApp Settings
+		 * Production-grade configuration following Meta's best practices
+		 *
+		 * Returns ICE configuration object for RTCPeerConnection
+		 */
+		try {
+			const response = await frappe.call({
+				method: 'whatsapp_calling.whatsapp_calling.api.call_control.get_ice_servers'
+			});
+
+			if (response.message && response.message.iceServers) {
+				return response.message;
+			}
+
+			// Fallback to Meta's recommended defaults
+			console.warn('No ICE configuration from settings, using defaults');
+			return {
+				iceServers: [
+					{ urls: 'stun:stun.l.google.com:19302' },
+					{ urls: 'stun:stun1.l.google.com:19302' }
+				]
+			};
+		} catch (error) {
+			console.error('Error fetching ICE servers:', error);
+			// Return safe default on error
+			return {
+				iceServers: [
+					{ urls: 'stun:stun.l.google.com:19302' },
+					{ urls: 'stun:stun1.l.google.com:19302' }
+				]
+			};
+		}
 	}
 
 	async join_janus_room(janus_http_url, room_id, sdp_offer) {

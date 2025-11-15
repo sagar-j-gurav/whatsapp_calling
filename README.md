@@ -40,7 +40,9 @@ WhatsApp User ↔ Meta WhatsApp Cloud API ↔ Frappe App ↔ Janus Media Server 
 
 ### 2. Janus Gateway Media Server
 
-**Quick Docker Installation (Recommended for Development)**
+**⚠️ Important**: For production deployment, see [JANUS_PRODUCTION_SETUP.md](JANUS_PRODUCTION_SETUP.md) for complete configuration guide following Meta's best practices.
+
+**Quick Docker Installation (Development Only)**
 ```bash
 docker pull canyan/janus-gateway:latest
 
@@ -58,6 +60,8 @@ docker run -d \
 ```bash
 curl http://localhost:8088/janus/info
 ```
+
+> **Note**: Docker setup above is for local development only. Production requires proper NAT configuration with public IP.
 
 ### 3. WhatsApp Business API
 - Meta Business Account
@@ -100,9 +104,18 @@ bench restart
 - Webhook Verify Token: Token for webhook verification
 
 **Janus Media Server Configuration:**
-- Janus HTTP API URL: `http://localhost:8088/janus`
-- Janus WebSocket URL: `ws://localhost:8188` (dev) or `wss://janus.yourdomain.com:8989` (prod)
-- Janus API Secret: (from your janus.jcfg file)
+- Janus HTTP API URL: `http://localhost:8088/janus` (dev) or `https://janus.yourdomain.com/janus` (prod)
+- Janus WebSocket URL: `ws://localhost:8188` (dev) or `wss://janus.yourdomain.com/janus-ws` (prod)
+- Janus API Secret: (from your janus.jcfg file, optional)
+
+**NAT & WebRTC Configuration (Production):**
+- Janus Public IP Address: Your server's public IP (e.g., `203.0.113.42`)
+- Enable STUN Server: ✓ (enabled by default)
+- STUN Server: `stun.l.google.com` (Meta recommended)
+- STUN Port: `19302`
+- Enable TURN Server: Only if needed for strict firewalls
+
+> **Note**: For production, proper NAT configuration is critical. See [JANUS_PRODUCTION_SETUP.md](JANUS_PRODUCTION_SETUP.md).
 
 **Call Recording Settings:**
 - Enable Call Recording: ✓
@@ -178,23 +191,25 @@ During an active call:
 
 ### Janus Configuration (Production)
 
-For production, enable SSL/TLS:
+**⚠️ Critical**: Production deployment requires proper NAT traversal configuration following Meta's best practices.
 
-```bash
-# Edit Janus HTTP transport config
-sudo nano /opt/janus/etc/janus/janus.transport.http.jcfg
+**Complete Production Setup Guide**: See [JANUS_PRODUCTION_SETUP.md](JANUS_PRODUCTION_SETUP.md) for:
+- NAT configuration (`nat_1_1_mapping` in janus.jcfg)
+- STUN server setup (Meta recommends Google STUN)
+- Firewall rules and port configuration
+- SSL/TLS certificates
+- Systemd service setup
+- Performance tuning
+- TURN server setup (optional)
+- Troubleshooting guide
 
-# Enable HTTPS
-https = true
-secure_port = 8089
-
-# Add SSL certificates
-cert_pem = "/etc/letsencrypt/live/janus.yourdomain.com/cert.pem"
-cert_key = "/etc/letsencrypt/live/janus.yourdomain.com/privkey.pem"
-
-# Restart Janus
-sudo systemctl restart janus
-```
+**Quick Production Checklist**:
+- ✓ Set `nat_1_1_mapping` to your public IP in janus.jcfg
+- ✓ Start Janus with `-S stun.l.google.com:19302`
+- ✓ Open firewall ports: TCP 8088, 8188 and UDP 10000-10200
+- ✓ Configure public IP in WhatsApp Settings > NAT & WebRTC Configuration
+- ✓ Enable SSL/TLS for production (HTTPS/WSS required)
+- ✓ Test WebRTC connection before going live
 
 ### WhatsApp Template (Call Permission Request)
 
@@ -300,14 +315,42 @@ The app automatically calculates and tracks:
 
 ## 🐛 Troubleshooting
 
+### WebRTC Connection Failed / No Audio
+
+**Production NAT Issues** (most common):
+- ❌ Symptoms: "Peer connection state: failed" or "No audio during call"
+- ✓ Solution: See [JANUS_PRODUCTION_SETUP.md](JANUS_PRODUCTION_SETUP.md) Section 9 (Troubleshooting)
+
+**Common causes**:
+1. `nat_1_1_mapping` not set to public IP in janus.jcfg
+2. Firewall blocking UDP ports (10000-10200)
+3. No STUN server configured
+4. Wrong public IP in WhatsApp Settings
+
+**Quick fix**:
+```bash
+# 1. Verify Janus is running
+curl http://localhost:8088/janus
+
+# 2. Check browser console for ICE candidates
+# Look for candidates with your public IP
+
+# 3. Verify NAT configuration in janus.jcfg
+grep nat_1_1_mapping /usr/share/janus/etc/janus/janus.jcfg
+
+# 4. Check Janus logs
+tail -f /var/log/janus.log | grep -i "dtls\|ice\|webrtc"
+```
+
 ### Janus Connection Failed
 
 ```bash
 # Check if Janus is running
-curl http://localhost:8088/janus/info
+curl http://localhost:8088/janus
 
 # Check Janus logs
-docker logs janus-gateway
+docker logs janus-gateway  # if using Docker
+tail -f /var/log/janus.log  # if native install
 
 # Verify ports are open
 netstat -tulpn | grep 8088
@@ -319,13 +362,6 @@ netstat -tulpn | grep 8088
 2. Check Meta webhook configuration
 3. Verify webhook verify token matches
 4. Check Frappe error logs: `bench --site [site] logs`
-
-### No Audio During Call
-
-1. Check microphone permissions in browser
-2. Verify Janus WebSocket connection
-3. Check browser console for WebRTC errors
-4. Ensure HTTPS for production (WebRTC requires secure context)
 
 ### Call Permission Not Working
 

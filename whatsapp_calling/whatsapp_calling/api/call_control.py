@@ -371,3 +371,86 @@ def initiate_call(to_number, lead=None, lead_name=None):
 	except Exception as e:
 		frappe.log_error(message=str(e), title="Initiate Call Error")
 		return {"success": False, "error": str(e)}
+
+
+@frappe.whitelist(allow_guest=False)
+def get_ice_servers():
+	"""
+	Get ICE servers configuration for WebRTC from WhatsApp Settings
+
+	Returns production-grade ICE configuration based on settings,
+	following Meta's best practices for NAT traversal.
+
+	Returns:
+		dict with iceServers array for RTCPeerConnection
+	"""
+	try:
+		settings = frappe.get_single("WhatsApp Settings")
+
+		# Check if custom JSON configuration is provided
+		if settings.get("ice_servers_json"):
+			import json
+			try:
+				custom_config = json.loads(settings.ice_servers_json)
+				return {"iceServers": custom_config}
+			except json.JSONDecodeError as e:
+				frappe.log_error(
+					message=f"Invalid ICE servers JSON: {str(e)}",
+					title="ICE Configuration Error"
+				)
+				# Fall through to use STUN/TURN settings
+
+		# Build ICE servers from STUN/TURN settings
+		ice_servers = []
+
+		# Add STUN server (recommended by Meta: stun.l.google.com:19302)
+		if settings.get("enable_stun"):
+			stun_server = settings.get("stun_server", "stun.l.google.com")
+			stun_port = settings.get("stun_port", 19302)
+			ice_servers.append({
+				"urls": f"stun:{stun_server}:{stun_port}"
+			})
+
+		# Add TURN server if enabled (for strict firewalls/NAT)
+		if settings.get("enable_turn") and settings.get("turn_server"):
+			turn_server = settings.get("turn_server")
+			turn_port = settings.get("turn_port", 3478)
+			turn_transport = (settings.get("turn_transport") or "UDP").lower()
+
+			# Build TURN URL based on transport
+			if turn_transport == "tls":
+				turn_url = f"turns:{turn_server}:{turn_port}"
+			else:
+				turn_url = f"turn:{turn_server}:{turn_port}?transport={turn_transport}"
+
+			turn_config = {"urls": turn_url}
+
+			# Add credentials if provided
+			if settings.get("turn_username"):
+				turn_config["username"] = settings.get("turn_username")
+			if settings.get("turn_credential"):
+				turn_config["credential"] = settings.get_password("turn_credential")
+
+			ice_servers.append(turn_config)
+
+		# If no servers configured, use Meta's recommended default (Google STUN)
+		if not ice_servers:
+			ice_servers = [
+				{"urls": "stun:stun.l.google.com:19302"},
+				{"urls": "stun:stun1.l.google.com:19302"}
+			]
+
+		return {"iceServers": ice_servers}
+
+	except Exception as e:
+		frappe.log_error(
+			message=f"Error getting ICE servers: {str(e)}",
+			title="ICE Configuration Error"
+		)
+		# Return safe default (Google STUN) on error
+		return {
+			"iceServers": [
+				{"urls": "stun:stun.l.google.com:19302"},
+				{"urls": "stun:stun1.l.google.com:19302"}
+			]
+		}

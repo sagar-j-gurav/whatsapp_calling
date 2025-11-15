@@ -17,6 +17,21 @@
   "column_break_2",
   "janus_api_secret",
   "janus_admin_secret",
+  "nat_webrtc_section",
+  "janus_public_ip",
+  "ice_servers_json",
+  "column_break_4",
+  "enable_stun",
+  "stun_server",
+  "stun_port",
+  "turn_section",
+  "enable_turn",
+  "turn_server",
+  "turn_port",
+  "column_break_5",
+  "turn_username",
+  "turn_credential",
+  "turn_transport",
   "recording_section",
   "enable_call_recording",
   "recording_storage_path",
@@ -86,6 +101,108 @@
    "fieldname": "janus_admin_secret",
    "fieldtype": "Password",
    "label": "Janus Admin Secret"
+  },
+  {
+   "fieldname": "nat_webrtc_section",
+   "fieldtype": "Section Break",
+   "label": "NAT & WebRTC Configuration",
+   "description": "Production settings for NAT traversal and ICE connectivity (required for public deployment)"
+  },
+  {
+   "fieldname": "janus_public_ip",
+   "fieldtype": "Data",
+   "label": "Janus Public IP Address",
+   "description": "Public IP of your Janus server (required for nat_1_1_mapping in janus.jcfg). Leave empty for local development."
+  },
+  {
+   "fieldname": "ice_servers_json",
+   "fieldtype": "Code",
+   "label": "ICE Servers Configuration (JSON)",
+   "options": "JSON",
+   "description": "Custom ICE servers configuration in JSON format. If empty, uses STUN/TURN settings below."
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "enable_stun",
+   "fieldtype": "Check",
+   "label": "Enable STUN Server",
+   "default": "1",
+   "description": "Use STUN server for NAT traversal (recommended for production)"
+  },
+  {
+   "fieldname": "stun_server",
+   "fieldtype": "Data",
+   "label": "STUN Server",
+   "default": "stun.l.google.com",
+   "depends_on": "eval:doc.enable_stun",
+   "description": "STUN server hostname (Meta recommends Google's STUN server)"
+  },
+  {
+   "fieldname": "stun_port",
+   "fieldtype": "Int",
+   "label": "STUN Port",
+   "default": "19302",
+   "depends_on": "eval:doc.enable_stun",
+   "description": "STUN server port (default: 19302)"
+  },
+  {
+   "fieldname": "turn_section",
+   "fieldtype": "Section Break",
+   "label": "TURN Server Configuration (Optional)",
+   "description": "TURN server acts as a relay when direct peer connection fails",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "enable_turn",
+   "fieldtype": "Check",
+   "label": "Enable TURN Server",
+   "default": "0",
+   "description": "Use TURN server as relay (required for strict firewalls/NAT)"
+  },
+  {
+   "fieldname": "turn_server",
+   "fieldtype": "Data",
+   "label": "TURN Server",
+   "depends_on": "eval:doc.enable_turn",
+   "description": "TURN server hostname or IP"
+  },
+  {
+   "fieldname": "turn_port",
+   "fieldtype": "Int",
+   "label": "TURN Port",
+   "default": "3478",
+   "depends_on": "eval:doc.enable_turn",
+   "description": "TURN server port (default: 3478)"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "turn_username",
+   "fieldtype": "Data",
+   "label": "TURN Username",
+   "depends_on": "eval:doc.enable_turn",
+   "description": "Authentication username for TURN server"
+  },
+  {
+   "fieldname": "turn_credential",
+   "fieldtype": "Password",
+   "label": "TURN Credential",
+   "depends_on": "eval:doc.enable_turn",
+   "description": "Authentication password/credential for TURN server"
+  },
+  {
+   "fieldname": "turn_transport",
+   "fieldtype": "Select",
+   "label": "TURN Transport Protocol",
+   "options": "UDP\nTCP\nTLS",
+   "default": "UDP",
+   "depends_on": "eval:doc.enable_turn",
+   "description": "Transport protocol for TURN server"
   },
   {
    "fieldname": "recording_section",
