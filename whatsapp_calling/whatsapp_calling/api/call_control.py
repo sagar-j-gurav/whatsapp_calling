@@ -206,7 +206,8 @@ def answer_call(call_id):
 			"webrtc_config": {
 				"janus_url": frappe.get_single("WhatsApp Settings").janus_ws_url,
 				"session_id": janus_session_id,
-				"handle_id": janus_handle_id
+				"handle_id": janus_handle_id,
+				"room_id": janus_room_id
 			}
 		}
 

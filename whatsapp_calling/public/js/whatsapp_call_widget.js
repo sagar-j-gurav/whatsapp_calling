@@ -94,6 +94,16 @@ whatsapp_calling.CallWidget = class {
 
 	async setup_webrtc(config) {
 		try {
+			console.log('=== Setting up WebRTC connection to Janus ===');
+			console.log('Config:', config);
+
+			// Get Janus HTTP URL from settings
+			const janus_http_url = await this.get_janus_http_url();
+			const room_id = config.room_id;
+
+			console.log(`Janus HTTP URL: ${janus_http_url}`);
+			console.log(`Room ID to join: ${room_id}`);
+
 			// Create peer connection
 			this.peer_connection = new RTCPeerConnection({
 				iceServers: [
@@ -105,41 +115,160 @@ whatsapp_calling.CallWidget = class {
 			// Add local audio track
 			this.local_stream.getTracks().forEach(track => {
 				this.peer_connection.addTrack(track, this.local_stream);
+				console.log('Added local audio track');
 			});
 
 			// Handle remote stream
 			this.peer_connection.ontrack = (event) => {
+				console.log('Received remote track!');
 				this.play_remote_audio(event.streams[0]);
 			};
 
-			// Handle ICE candidates
+			// Handle ICE candidates - send them to Janus via trickle
 			this.peer_connection.onicecandidate = (event) => {
 				if (event.candidate) {
-					console.log('ICE candidate:', event.candidate);
-					// Send to Janus via signaling server (implement if needed)
+					console.log('ICE candidate generated:', event.candidate);
+					// Janus will handle ICE through the initial offer/answer
 				}
 			};
 
 			// Handle connection state changes
 			this.peer_connection.onconnectionstatechange = (event) => {
-				console.log('Connection state:', this.peer_connection.connectionState);
+				console.log('Peer connection state:', this.peer_connection.connectionState);
 				if (this.peer_connection.connectionState === 'connected') {
-					this.show_active_call_ui();
+					console.log('✓ WebRTC connection established!');
+				} else if (this.peer_connection.connectionState === 'failed') {
+					console.error('✗ WebRTC connection failed');
+					frappe.show_alert({message: 'Connection failed', indicator: 'red'});
 				}
 			};
 
-			// Create offer
-			const offer = await this.peer_connection.createOffer();
+			// Create SDP offer
+			console.log('Creating SDP offer...');
+			const offer = await this.peer_connection.createOffer({
+				offerToReceiveAudio: true
+			});
 			await this.peer_connection.setLocalDescription(offer);
+			console.log('✓ Local SDP set');
 
-			// TODO: Send offer to Janus and get answer
-			// For now, Janus will handle this via WhatsApp API connection
+			// Now join the Janus AudioBridge room
+			console.log(`Joining Janus room ${room_id}...`);
+			const answer = await this.join_janus_room(janus_http_url, room_id, offer.sdp);
 
-			console.log('WebRTC setup complete');
+			// Set remote description
+			console.log('Setting remote SDP answer...');
+			await this.peer_connection.setRemoteDescription({
+				type: 'answer',
+				sdp: answer
+			});
+			console.log('✓ Remote SDP set - WebRTC connection established!');
+
 		} catch (error) {
 			console.error('WebRTC setup error:', error);
 			throw error;
 		}
+	}
+
+	async get_janus_http_url() {
+		// Get Janus HTTP URL from WhatsApp Settings
+		const response = await frappe.call({
+			method: 'frappe.client.get_value',
+			args: {
+				doctype: 'WhatsApp Settings',
+				filters: {},
+				fieldname: 'janus_http_url'
+			}
+		});
+		return response.message.janus_http_url;
+	}
+
+	async join_janus_room(janus_http_url, room_id, sdp_offer) {
+		console.log('=== Joining Janus AudioBridge Room ===');
+
+		// Step 1: Create Janus session
+		console.log('Creating Janus session...');
+		const session_response = await fetch(janus_http_url, {
+			method: 'POST',
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify({
+				janus: 'create',
+				transaction: this.generate_transaction_id()
+			})
+		});
+		const session_data = await session_response.json();
+		const session_id = session_data.data.id;
+		console.log(`✓ Session created: ${session_id}`);
+
+		// Step 2: Attach AudioBridge plugin
+		console.log('Attaching AudioBridge plugin...');
+		const attach_response = await fetch(`${janus_http_url}/${session_id}`, {
+			method: 'POST',
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify({
+				janus: 'attach',
+				plugin: 'janus.plugin.audiobridge',
+				transaction: this.generate_transaction_id()
+			})
+		});
+		const attach_data = await attach_response.json();
+		const handle_id = attach_data.data.id;
+		console.log(`✓ Plugin attached: ${handle_id}`);
+
+		// Store for cleanup
+		this.janus_session_id = session_id;
+		this.janus_handle_id = handle_id;
+
+		// Step 3: Join the room with our SDP offer
+		console.log(`Joining room ${room_id} with SDP offer...`);
+		const join_response = await fetch(`${janus_http_url}/${session_id}/${handle_id}`, {
+			method: 'POST',
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify({
+				janus: 'message',
+				transaction: this.generate_transaction_id(),
+				body: {
+					request: 'join',
+					room: parseInt(room_id),
+					display: frappe.session.user
+				},
+				jsep: {
+					type: 'offer',
+					sdp: sdp_offer
+				}
+			})
+		});
+
+		const join_data = await join_response.json();
+		console.log('Join response:', join_data);
+
+		// Check for immediate answer
+		if (join_data.jsep && join_data.jsep.type === 'answer') {
+			console.log('✓ Received SDP answer immediately');
+			return join_data.jsep.sdp;
+		}
+
+		// Poll for SDP answer in events
+		if (join_data.janus === 'ack') {
+			console.log('Received ack, polling for SDP answer...');
+			for (let i = 0; i < 50; i++) {
+				await new Promise(resolve => setTimeout(resolve, 100));
+
+				const event_response = await fetch(`${janus_http_url}/${session_id}?maxev=1`);
+				const event_data = await event_response.json();
+
+				if (event_data.jsep && event_data.jsep.type === 'answer') {
+					console.log(`✓ Received SDP answer after ${i + 1} polls`);
+					return event_data.jsep.sdp;
+				}
+			}
+			throw new Error('Timeout waiting for SDP answer from Janus');
+		}
+
+		throw new Error('Unexpected response from Janus');
+	}
+
+	generate_transaction_id() {
+		return Math.random().toString(36).substring(2, 15);
 	}
 
 	play_remote_audio(stream) {
