@@ -1,0 +1,42 @@
+# Janus configuration for local Mac development
+# This file configures NAT traversal for Docker on macOS
+
+general: {
+	# Server details
+	server_name = "Janus (Docker/Mac Development)"
+
+	# CRITICAL: Advertise localhost instead of Docker internal IP
+	# This allows the browser on Mac to connect to Janus
+	nat_1_1_mapping = "127.0.0.1"
+
+	# Enable ICE-TCP as fallback
+	ice_tcp = true
+
+	# Session timeout
+	session_timeout = 60
+}
+
+# Media configuration
+media: {
+	# RTP/RTCP port range (must match Docker port mapping)
+	rtp_port_range = "10000-10200"
+}
+
+# NAT configuration
+nat: {
+	# Use STUN server for NAT discovery
+	stun_server = "stun.l.google.com"
+	stun_port = 19302
+
+	# Enable ICE Lite mode (simpler, works well for server-side)
+	ice_lite = false
+}
+
+# Logging
+log: {
+	# Debug level (1-7, 7 is most verbose)
+	debug_level = 5
+
+	# Log to stdout for Docker
+	log_to_stdout = true
+}
