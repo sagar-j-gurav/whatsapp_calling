@@ -405,7 +405,7 @@ def get_ice_servers():
 
 		# Add STUN server (recommended by Meta: stun.l.google.com:19302)
 		if settings.get("enable_stun"):
-			stun_server = settings.get("stun_server", "stun.l.google.com")
+			stun_server = (settings.get("stun_server") or "stun.l.google.com").strip()
 			stun_port = settings.get("stun_port", 19302)
 			ice_servers.append({
 				"urls": f"stun:{stun_server}:{stun_port}"
@@ -413,7 +413,7 @@ def get_ice_servers():
 
 		# Add TURN server if enabled (for strict firewalls/NAT)
 		if settings.get("enable_turn") and settings.get("turn_server"):
-			turn_server = settings.get("turn_server")
+			turn_server = settings.get("turn_server").strip()
 			turn_port = settings.get("turn_port", 3478)
 			turn_transport = (settings.get("turn_transport") or "UDP").lower()
 
